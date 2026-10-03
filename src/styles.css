@@ -50,6 +50,7 @@ a { color: inherit; }
 .wordmark { font-family: var(--font-display); font-weight: 800; font-size: 22px; letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none; }
 .wordmark { display: inline-flex; align-items: center; gap: 6px; }
 .wordmark img { display: block; margin-right: 4px; }   /* the pixel art logo: a little OLED with two eyes */
+:root[data-theme="dark"] .wordmark img { filter: invert(1); }   /* the logo is solid black, so flip it on the black page or it disappears */
 .wordmark b { color: var(--accent); }
 .hero { display: grid; gap: 14px; }
 .hero.compact h1 { font-size: clamp(44px, 8vw, 88px); }
