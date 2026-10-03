@@ -17,9 +17,32 @@ export default function AnimationPage() {
   const a = bySlug(slug);
   const [guideHtml, setGuideHtml] = useState("");
   const [frameHeight, setFrameHeight] = useState(900);
+  const [copyState, setCopyState] = useState("");       // message next to the Copy HTML button
+  const [copyText, setCopyText] = useState("");         // the file text, shown only when the clipboard is blocked
+
+  // Copy HTML: fetch the animation file as text and put the whole thing on the clipboard.
+  async function copyHtml() {
+    setCopyState("Copying...");
+    try {
+      const r = await fetch(folderOf(a) + "index.html");
+      if (!r.ok) throw new Error("fetch failed");
+      const text = await r.text();
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopyState(`Copied. ${text.length.toLocaleString()} characters, the complete ${a.slug}.html file.`);
+        setCopyText("");
+      } catch {
+        // The clipboard can be blocked (http, older browsers): show the text selected so Ctrl+C works.
+        setCopyText(text);
+        setCopyState("Copy is blocked in this browser. The file is selected below, press Ctrl+C or Cmd+C.");
+      }
+    } catch {
+      setCopyState("Could not load the file. Use Download the page instead.");
+    }
+  }
 
   useEffect(() => {
-    document.title = a ? `${a.title} | Animations by Khizar` : "Not found | Animations by Khizar";
+    document.title = a ? `${a.title} | OLED Animations` : "Not found | OLED Animations";
     window.scrollTo(0, 0);
   }, [a]);
 
@@ -58,7 +81,13 @@ export default function AnimationPage() {
           {a.files.map((f) => (
             <a key={f.file} className="button" href={folder + f.file} download title={f.note}>{f.label}</a>
           ))}
+          <button type="button" onClick={copyHtml} title="Puts the complete HTML file on your clipboard">Copy HTML</button>
+          {copyState && <span className="note" aria-live="polite">{copyState}</span>}
         </div>
+        {copyText && (
+          <textarea className="copy-fallback" readOnly value={copyText} aria-label="The complete HTML file"
+            ref={(el) => { if (el) { el.focus(); el.select(); } }} />
+        )}
       </header>
 
       <section className="frame-wrap" aria-label={`${a.title} live preview`}>

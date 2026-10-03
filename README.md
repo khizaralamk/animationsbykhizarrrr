@@ -1,6 +1,6 @@
-# Animations by Khizar
+# animationsbykhizar
 
-A small React + Vite site that shows pixel animations for 128 by 64 OLED screens.
+A small React + Vite site that shows animations for 128 by 64 OLED screens.
 The home page lists every animation as a card, newest first. Each animation has its own page with a live preview, downloads, and a set up guide where there is one.
 
 ## Run it

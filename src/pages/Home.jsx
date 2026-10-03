@@ -7,9 +7,9 @@ export default function Home() {
   return (
     <>
       <header className="hero">
-        <p className="kicker">For 0.96 inch OLED screens on an ESP32 or Arduino</p>
-        <h1>OLED animations<br />by Khizar</h1>
-        <p className="lead">I build animations for the little 128 by 64 OLED screens and post them here. Try each one in your browser first. If you like it, download the file. If it comes with a sketch, upload that to your board and the same thing plays on the real screen.</p>
+        <p className="kicker">128 by 64 OLED, ESP32 or Arduino</p>
+        <h1>OLED animations</h1>
+        <p className="lead">Try each one in your browser, then download the file. If it comes with a sketch, upload that to your board.</p>
       </header>
 
       <section aria-labelledby="recent">

@@ -19,7 +19,7 @@ export default function Layout() {
   return (
     <div className="wrap">
       <div className="topbar">
-        <Link to="/" className="wordmark">Animations <b>by Khizar</b></Link>
+        <Link to="/" className="wordmark">OLED <b>Animations</b></Link>
         <div className="actions" role="group" aria-label="Page look">
           <span className="label">Page</span>
           <button aria-pressed={theme === "light"} onClick={() => setTheme("light")}>White</button>
@@ -30,7 +30,7 @@ export default function Layout() {
       <Outlet context={{ theme }} />
 
       <footer>
-        <p>Every animation is one HTML file you can keep, plus a sketch for an ESP32 where there is one. Made for 128 by 64 OLED screens.</p>
+        <p>Every animation is one HTML file you can keep, plus a sketch for an ESP32 where there is one.</p>
       </footer>
     </div>
   );
