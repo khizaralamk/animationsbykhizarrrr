@@ -62,8 +62,7 @@ export default function AnimationPage() {
       fetch(folderOf(a) + g.file)
         .then((r) => (r.ok ? r.text() : ""))
         // the section already has a heading, so drop the file's own first title line
-        .then((md) => ({ title: g.title, html: md ? marked.parse(md.replace(/^# .*
-/, "")) : "" }))
+        .then((md) => ({ title: g.title, html: md ? marked.parse(md.replace(/^# .*\n/, "")) : "" }))
         .catch(() => ({ title: g.title, html: "" }))
     )).then((list) => { if (alive) setGuides(list.filter((g) => g.html)); });
     return () => { alive = false; };
