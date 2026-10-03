@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet } from "react-router-dom";
 
-const REPO = "https://github.com/khizaralamk/animationsbykhizarrrr";
+const REPO = "https://github.com/KhizarAlam20/animationsbykhizarrrr";
 
 /* Reads the saved page look. Storage can be blocked, so every read and write is wrapped. */
 function savedTheme() {
