@@ -1,0 +1,745 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--
+  SPIDEY TRANSITIONS
+  One file, no build step, nothing to install. Open it in any browser.
+  What is inside: the page (HTML), the look (CSS in <style>), and the preview (JavaScript in <script>).
+  The three spider pictures are embedded as base64 text in the SPIDERS list, so the page works offline.
+  The Arduino sketch is embedded too (SKETCH_SOURCE), so the "Copy the complete sketch" button
+  can hand you a program with your settings already filled in. The same sketch is in SpiderShow_OneFile/.
+  Set up steps are in guide.md.
+-->
+<title>Spidey Transitions</title>
+<meta name="description" content="Preview spider emblem animations for a 128 by 64 OLED screen, tune them, then copy the settings into the ESP32 sketch.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+  /* =====================================================================
+     1. DESIGN TOKENS
+     Layout: one column, 1040px wide. The OLED screen comes first, then the
+     spider picker, then the control cards, then the "put it on your board" card.
+     Light is the default look. Dark is applied only when the Dark button is used.
+     ===================================================================== */
+  :root {
+    --bg: #FFFFFF;            /* page background */
+    --panel: #F6F6F3;         /* cards */
+    --panel-strong: #EDEDE8;  /* pressed tiles, code boxes */
+    --ink: #121315;           /* main text */
+    --muted: #5E6368;         /* secondary text */
+    --line: #DEDFD9;          /* borders */
+    --accent: #D8232A;        /* the one strong colour: buttons that are on, focus rings */
+    --accent-ink: #FFFFFF;    /* text on the accent colour */
+    --warn: #9A5B00;          /* "runs off the screen" notes */
+    --bezel: #0B0C0E;         /* the OLED module body, same in both looks */
+    --bezel-ink: #8E939A;     /* small text printed on the module */
+    --font-display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+    --font-body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: ui-monospace, "Cascadia Mono", Consolas, "SF Mono", monospace;
+    color-scheme: light;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0E0F11; --panel: #17191C; --panel-strong: #212428; --ink: #F1F2EE; --muted: #9DA3A9;
+    --line: #2A2D32; --accent: #FF4A51; --accent-ink: #15090A; --warn: #F0B45A; --bezel: #000000; --bezel-ink: #7F858C;
+    color-scheme: dark;
+  }
+
+  /* =====================================================================
+     2. BASE
+     ===================================================================== */
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.5; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 56px; display: grid; gap: 28px; }
+  h1, h2, h3 { font-family: var(--font-display); text-transform: uppercase; margin: 0; text-wrap: balance; }
+  h1 { font-size: clamp(52px, 10vw, 112px); font-weight: 900; line-height: 0.9; letter-spacing: 0.005em; }
+  h2 { font-size: 26px; font-weight: 800; letter-spacing: 0.02em; }
+  h3 { font-size: 20px; font-weight: 800; letter-spacing: 0.02em; }
+  p { margin: 0; }
+  .muted { color: var(--muted); }
+  .lead { font-size: 18px; max-width: 58ch; }
+  .note { color: var(--muted); font-size: 14.5px; max-width: 64ch; }
+  .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  a { color: inherit; }
+
+  /* =====================================================================
+     3. TOP BAR AND HERO
+     ===================================================================== */
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .wordmark { font-family: var(--font-display); font-weight: 800; font-size: 22px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .wordmark b { color: var(--accent); }
+  .hero { display: grid; gap: 14px; }
+  .hero .kicker { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-size: 14px; }
+
+  /* =====================================================================
+     4. THE OLED MODULE
+     The canvas is the real 128 x 64 picture, scaled up with no smoothing.
+     ===================================================================== */
+  .module { background: var(--bezel); border-radius: 14px; padding: 22px 22px 16px; color: var(--bezel-ink); }
+  .module .pins { display: flex; gap: 18px; justify-content: center; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; margin-bottom: 14px; }
+  .module .pins span::before { content: "\25CF"; display: block; text-align: center; font-size: 9px; color: #C9A227; margin-bottom: 2px; }
+  .screen { position: relative; max-width: 896px; margin: 0 auto; aspect-ratio: 2 / 1; }
+  .screen canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; background: #000; border-radius: 3px; }
+  .screen .grid { position: absolute; inset: 0; pointer-events: none; border-radius: 3px;
+    background-image: linear-gradient(to right, rgba(255,255,255,0.14) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.14) 1px, transparent 1px);
+    background-size: calc(100% / 128) calc(100% / 64); }
+  .strip { max-width: 896px; margin: 12px auto 0; display: flex; flex-wrap: wrap; gap: 4px 18px; justify-content: space-between; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+
+  /* =====================================================================
+     5. BUTTONS, TILES, SLIDERS, CARDS
+     ===================================================================== */
+  button { font: inherit; font-weight: 500; font-size: 14.5px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+  button:hover { border-color: var(--ink); }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button.primary[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .actions .break { flex-basis: 100%; height: 0; }   /* forces the note onto its own line */
+  .label { font-family: var(--font-display); font-weight: 700; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+
+  .deck { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .tile { padding: 8px; border-radius: 12px; display: grid; gap: 8px; text-align: left; min-width: 0; background: var(--panel); }
+  .tile canvas { width: 100%; aspect-ratio: 2 / 1; image-rendering: pixelated; background: #000; border-radius: 6px; display: block; }
+  .tile span { font-family: var(--font-display); font-weight: 800; font-size: 18px; letter-spacing: 0.03em; text-transform: uppercase; }
+  .tile[aria-pressed="true"] { background: var(--panel-strong); color: var(--ink); border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+  @media (max-width: 520px) { .deck { grid-template-columns: 1fr; } .tile { grid-template-columns: 120px 1fr; align-items: center; } }
+
+  .row { display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 12px; padding-block: 6px; }
+  .row label { font-weight: 500; }
+  .row output { font-family: var(--font-mono); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+  .row input[type="range"] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); margin: 4px 0 0; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+  .card { background: var(--panel); border-radius: 14px; padding: 18px 20px; min-width: 0; display: grid; gap: 12px; align-content: start; }
+  .card.wide { grid-column: 1 / -1; }
+  .card[inert] { opacity: 0.45; }
+  .card .actions button { padding: 7px 11px; }
+  .card .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0 20px; }
+  #fitState[data-warn="true"] { color: var(--warn); }
+
+  /* =====================================================================
+     6. "PUT IT ON YOUR BOARD"
+     ===================================================================== */
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .step { display: grid; gap: 6px; }
+  .step b { font-family: var(--font-display); font-weight: 900; font-size: 34px; line-height: 1; color: var(--accent); }
+  pre { margin: 0; background: var(--panel-strong); border-radius: 10px; padding: 14px 16px; font-family: var(--font-mono); font-size: 13px; line-height: 1.55; overflow-x: auto; }
+  footer { color: var(--muted); font-size: 14px; display: grid; gap: 4px; }
+
+  /* Embedded inside another site (opened with ?embed=1): hide the parts the host page already shows. */
+  :root[data-embed] .topbar, :root[data-embed] .hero, :root[data-embed] footer { display: none; }
+  :root[data-embed] .wrap { padding-block: 12px 28px; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ================= TOP BAR ================= -->
+  <div class="topbar">
+    <div class="wordmark">Spidey <b>Transitions</b></div>
+    <div class="actions" role="group" aria-label="Page look">
+      <span class="label">Page</span>
+      <button class="th" data-th="light" aria-pressed="true">White</button>
+      <button class="th" data-th="dark" aria-pressed="false">Black</button>
+    </div>
+  </div>
+
+  <!-- ================= HERO ================= -->
+  <header class="hero">
+    <p class="kicker">Pixel art for a 128 by 64 OLED</p>
+    <h1>Three spiders.<br>One tiny screen.</h1>
+    <p class="lead">Three spider emblems traced into real 1 bit pixels and shown on a simulated 0.96 inch OLED. Pick a spider, turn it, spin it, or run the glitch show. When it looks right, copy the settings into the free ESP32 sketch and your board will draw exactly what you see here.</p>
+  </header>
+
+  <!-- ================= THE SCREEN ================= -->
+  <section class="module" aria-label="OLED preview">
+    <div class="pins"><span>GND</span><span>VCC</span><span>SCL</span><span>SDA</span></div>
+    <div class="screen">
+      <canvas id="oled" width="128" height="64" aria-label="Simulated OLED showing the spider emblem"></canvas>
+      <div class="grid" id="gridOverlay" hidden></div>
+    </div>
+    <div class="strip"><span id="nowName">Loading</span><span id="status">Loading</span></div>
+  </section>
+
+  <div class="actions" role="group" aria-label="Scenes">
+    <span class="label">Scenes</span>
+    <button class="scene" data-scene="show">Glitch show</button>
+    <button class="scene" data-scene="still">Still and upright</button>
+    <button class="scene" data-scene="spin">Slow spin</button>
+    <button class="scene" data-scene="swing">Pendulum</button>
+    <button class="scene" data-scene="steps">Chunky spin</button>
+  </div>
+
+  <!-- ================= SCREEN COLOUR ================= -->
+  <div class="actions" role="group" aria-label="Screen colour">
+    <span class="label">Your screen</span>
+    <button class="sc" data-sc="two" aria-pressed="true">Yellow and cyan</button>
+    <button class="sc" data-sc="white" aria-pressed="false">White</button>
+    <button class="sc" data-sc="blue" aria-pressed="false">Blue</button>
+    <span class="break"></span>
+    <span class="note">Cheap 0.96 inch OLED modules come in these three kinds. Pick yours and every picture on this page switches to it. The two colour kind has 16 yellow rows at the top and cannot show anything else there. Invert, further down, gives a black spider on a lit background.</span>
+  </div>
+
+  <!-- ================= SPIDER PICKER ================= -->
+  <div class="deck" id="deck" role="group" aria-label="Choose a spider"></div>
+
+  <!-- ================= CONTROLS ================= -->
+  <div class="cards">
+
+    <div class="card wide">
+      <h2>Glitch show</h2>
+      <div class="actions">
+        <button id="btnShow" class="primary" aria-pressed="false">Play glitch show</button>
+      </div>
+      <div class="two">
+        <div class="row">
+          <label for="trSpeed">Transition speed</label><output id="o_trSpeed" for="trSpeed">1x, 0.72 s</output>
+          <input type="range" id="trSpeed" min="0.25" max="4" step="0.25" value="1">
+        </div>
+        <div class="row">
+          <label for="hold">Show each spider for</label><output id="o_hold" for="hold">1.0 s</output>
+          <input type="range" id="hold" min="500" max="10000" step="500" value="1000">
+        </div>
+      </div>
+      <p class="note">The show goes Curved, Angular, Long and round again, with a glitch between each one. Every spider stays upright while the show plays, so the Rotation card is locked until you stop it. Slide Transition speed to the right for a faster glitch. Click any spider tile to glitch straight to it.</p>
+    </div>
+
+    <div class="card" id="rotCard">
+      <h2>Rotation</h2>
+      <div class="row">
+        <label for="angle">Angle</label><output id="o_angle" for="angle">0 deg</output>
+        <input type="range" id="angle" min="0" max="359" step="1" value="0">
+      </div>
+      <div class="actions" id="presets" role="group" aria-label="Jump to angle">
+        <span class="label">Jump to</span>
+      </div>
+      <div class="actions" role="group" aria-label="Motion">
+        <span class="label">Motion</span>
+        <button class="mo" data-mo="still" aria-pressed="true">Still</button>
+        <button class="mo" data-mo="spin" aria-pressed="false">Spin</button>
+        <button class="mo" data-mo="swing" aria-pressed="false">Swing</button>
+        <button id="btnDir" aria-pressed="false">Clockwise</button>
+      </div>
+      <div class="row">
+        <label for="speed">Speed</label><output id="o_speed" for="speed">90 deg/s</output>
+        <input type="range" id="speed" min="10" max="360" step="10" value="90">
+      </div>
+      <div class="row">
+        <label for="swing">Swing range</label><output id="o_swing" for="swing">plus or minus 30 deg</output>
+        <input type="range" id="swing" min="5" max="90" step="5" value="30">
+      </div>
+      <div class="actions" role="group" aria-label="Angle steps">
+        <span class="label">Steps</span>
+        <button class="st" data-st="1" aria-pressed="true">Smooth</button>
+        <button class="st" data-st="15" aria-pressed="false">15 deg</button>
+        <button class="st" data-st="45" aria-pressed="false">45 deg</button>
+        <button class="st" data-st="90" aria-pressed="false">90 deg</button>
+      </div>
+      <p class="note">Spin turns all the way round. Swing rocks left and right around the angle you set. Steps makes the turn jump in chunks for a chunkier pixel look.</p>
+    </div>
+
+    <div class="card">
+      <h2>Size and look</h2>
+      <div class="row">
+        <label for="size">Size</label><output id="o_size" for="size">48 px</output>
+        <input type="range" id="size" min="16" max="128" step="1" value="48">
+      </div>
+      <div class="actions">
+        <button id="btnFit">Biggest that fits this angle</button>
+        <button id="btnSafe">Biggest that fits every angle</button>
+      </div>
+      <div class="row">
+        <label for="weight">Line weight</label><output id="o_weight" for="weight">normal</output>
+        <input type="range" id="weight" min="1" max="10" step="1" value="7">
+      </div>
+      <div class="actions">
+        <button id="btnCyan" aria-pressed="false">Stay in cyan area</button>
+        <button id="btnInvert" aria-pressed="false">Invert</button>
+        <button id="btnGrid" aria-pressed="false">Pixel grid</button>
+      </div>
+      <p class="note" id="fitState">Loading</p>
+      <p class="note">Size is the spider's longest side in screen pixels. Thin legs can break up when the spider is small, so raise Line weight if a leg goes missing.</p>
+    </div>
+
+    <!-- ================= PUT IT ON YOUR BOARD ================= -->
+    <div class="card wide">
+      <h2>Put it on your board</h2>
+      <div class="steps">
+        <div class="step"><b>1</b><h3>Tune it here</h3><p class="note">Pick a spider, a size, a line weight and the show timing. What you see on the screen above is what the board will draw.</p></div>
+        <div class="step"><b>2</b><h3>Copy the sketch</h3><p class="note">Press the red button. It copies the complete Arduino program, spiders included, with your settings already filled in.</p></div>
+        <div class="step"><b>3</b><h3>Paste and upload</h3><p class="note">In the Arduino IDE make a new sketch, select all, paste, and press Upload. That is the whole job. The guide in this folder has every click.</p></div>
+      </div>
+      <div class="actions">
+        <button id="btnCopyAll" class="primary">Copy the complete sketch with my settings</button>
+        <button id="btnCopy">Copy only the settings lines</button>
+        <span id="copyState" class="note" aria-live="polite"></span>
+      </div>
+      <pre id="codeOut" aria-label="Settings to paste into the sketch"></pre>
+      <textarea id="sketchOut" aria-label="The complete sketch" hidden readonly></textarea>
+      <p class="note">The settings lines above are for people who already have SpiderShow.ino open: replace the matching lines near the top. Everyone else can use the red button and paste the whole thing into an empty sketch.</p>
+      <p class="note">You need: an ESP32 DevKit board, a 0.96 inch I2C OLED, four jumper wires, a USB cable and the free Arduino IDE with the ESP32 boards and the Adafruit SSD1306 library installed. Wiring is GND to GND, VCC to 3V3, SCL to pin 26, SDA to pin 25. The full steps are in guide.md next to this file.</p>
+    </div>
+  </div>
+
+  <footer>
+    <p>Spidey Transitions is one HTML file. The spiders live inside it, so it works offline and you can keep a copy.</p>
+    <p>Files in this folder: spidey-transitions.html (this page), guide.md (how to put it on an ESP32), SpiderShow_OneFile/ (the whole program in one file, ready to paste), SpiderShow/ (the same program split into two files for people who like to read it).</p>
+  </footer>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  /* =====================================================================
+     1. NUMBERS THAT DESCRIBE THE SCREEN AND THE SPIDER PICTURES
+     ===================================================================== */
+  const W = 128, H = 64;              // the OLED is 128 pixels wide and 64 tall
+  const YELLOW_ROWS = 16;             // on a two colour module, rows 0 to 15 are yellow
+  const M = 256;                      // each spider master picture is 256 x 256, 1 bit per pixel
+  const SPAN = 240;                   // the spider's longest side covers 240 of those 256 pixels
+  const SS = 4;                       // 4 x 4 = 16 samples per screen pixel when drawing
+  const GLITCH_MS = 720;              // a glitch at 1x speed takes this long
+  const FRAME_MS = 42;                // 24 frames a second, the same rate as the board
+  const SHOW_ANGLE = 0;               // the glitch show keeps every spider upright
+
+  /* The three spiders. Each "b64" string is the 256 x 256 picture, packed 8 pixels per byte,
+     32 bytes per row, leftmost pixel in the top bit. SpiderShow/spider_masters.h holds the same bytes. */
+  const SPIDERS = [
+    { name: "Curved legs",  b64: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAADAAAAAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAABgAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAADAAAAAAAAAAAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAAAABgAAAAAAAAAAAAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAABwAAAAAAAAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAHAAAAAAAAAAAAAAAAAAAAAAAAAADAAAAAAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAAAAAAAAAEAABwAAAAAAAAAAAAAADgAAIAAAAAAAAAAAAAAAAAAAQAAOAAAAAAAAAAAAAAAHAAAgAAAAAAAAAAAAAAAAAACAAA4AAAAAAAAAAAAAAAcAABAAAAAAAAAAAAAAAAAAAIAAHgAAAAAAAAAAAAAAB4AAEAAAAAAAAAAAAAAAAAABgAAeAAAAAAAAAAAAAAAHgAAYAAAAAAAAAAAAAAAAAAGAABwAAAAAAAAAAAAAAAOAABgAAAAAAAAAAAAAAAAAAQAAPAAAAAAAAAAAAAAAA8AACAAAAAAAAAAAAAAAAAADAAA8AAAAAAAAAAAAAAADwAAMAAAAAAAAAAAAAAAAAAMAAHwAAAAAAAAAAAAAAAPgAAwAAAAAAAAAAAAAAAAABwAAeAAAAAAAAAAAAAAAAeAADgAAAAAAAAAAAAAAAAAGAAB4AAAAAAAAAAAAAAAB4AAGAAAAAAAAAAAAAAAAAAYAAPgAAAAAAAAAAAAAAAHwAAYAAAAAAAAAAAAAAAAADgAA+AAAAAAAAAAAAAAAAfAABwAAAAAAAAAAAAAAAAAOAADwAAAAAAAAAAAAAAAA8AAHAAAAAAAAAAAAAAAAAA4AAfAAAAAAAAAAAAAAAAD4AAcAAAAAAAAAAAAAAAAAHAAB8AAAAAAAAAAAAAAAAPgAA4AAAAAAAAAAAAAAAAAcAAPwAAAAAAAAAAAAAAAA/AADgAAAAAAAAAAAAAAAABwAA/AAAAAAAAAAAAAAAAD8AAOAAAAAAAAAAAAAAAAAHAAD4AAAAAAAAAAAAAAAAHwAA4AAAAAAAAAAAAAAAAA8AAfgAAAAAAAAAAAAAAAAfgADwAAAAAAAAAAAAAAAADwAB+AAAAAAAAAAAAAAAAB+AAPAAAAAAAAAAAAAAAAAPAAH4AAAAAAAAAAAAAAAAH4AA8AAAAAAAAAAAAAAAAA4AAfgAAAAAAAAAAAAAAAAfgABwAAAAAAAAAAAAAAAAHgAD+AAAAAAAAAAAAAAAAB/AAHgAAAAAAAAAAAAAAAAeAAP4AAAGAAAAAAAAYAAAH8AAeAAAAAAAAAAAAAAAAB4AA/AAAA8AACAEAADwAAAPwAB4AAAAAAAAAAAAAAAAHgAD8AAAP4AAYAYAAfwAAA/AAHgAAAAAAAAAAAAAAAA+AAfwAAB/wADAAwAD/gAAD+AAfAAAAAAAAAAAAAAAAD4AB/AAAf/gAcADgAf/gAAP4AB8AAAAAAAAAAAAAAAAPgAH8AAH//ADwAPAD//gAA/gAHwAAAAAAAAAAAAAAAA+AAfwAA//+AeAAeAf//AAD+AAfAAAAAAAAAAAAAAAAD4AD/AAP/H8D8AD8D+P/AAP8AB8AAAAAAAAAAAAAAAAfAAP4AB/wP4PwAPwfwP+AAfwAD4AAAAAAAAAAAAAAAB8AA/gAf+Afx/AA/j+Af+AB/AAPgAAAAAAAAAAAAAAAHwAD+AH/gA/j+/38fwAf+AH8AA+AAAAAAAAAAAAAAAAfAAP4A/4AB/P///z+AAf8AfwAD4AAAAAAAAAAAAAAAB8AB/gP/AAD+////fwAA/8B/gAPgAAAAAAAAAAAAAAAHwAH+B/wB4H/////+B4A/4H+AA+AAAAAAAAAAAAAAAA/AAf4f+AP4P/////wfwB/4f4AD8AAAAAAAAAAAAAAAD8AB/n/gB/4f////+H/gB/5/gAPwAAAAAAAAAAAAAAAPwAH+/8Af/w/////w//gD/3+AA/AAAAAAAAAAAAAAAA/AAf//AD//x////+P//AD//4AD8AAAAAAAAAAAAAAAD8AD//wA///z////z///AD//wAPwAAAAAAAAAAAAAAAPwAP/+AH/D///////8P+AH//AA/AAAAAAAAAAAAAAAA/AA//gB/wB//////+AP+AH/8AD8AAAAAAAAAAAAAAAH8AD/8AP+AB//////gAf8AP/wAP4AAAAAAAAAAAAAAAfwAP/AB/wAB/////4AA/4AP/AA/gAAAAAAAAAAAAAAB/AA/wAf8A/D/////D8A/4AP8AD+AAAAAAAAAAAAAAAH8AD+AD/gP////////8B/wAfwAP4AAAAAAAAAAAAAAAfwAfgA/8B/////////4D/wAfgA/gAAAAAAAAAAAAAAB/AB8AH/gP/////////wH/gA+AD+AAAAAAAAAAAAAAAH8AHAB/4B//////////gH/gA4AP4AAAAAAAAAAAAAAAfwAYAP/AP4Af////gB/AP/ABgA/gAAAAAAAAAAAAAAB/AAAB/4B/AD/////AD+Af+AAAD+AAAAAAAAAAAAAAAP8AAAf+Af4B//////gH+Af+AAAP8AAAAAAAAAAAAAAA/wAAD/wD/A///////wP8A/8AAA/wAAAAAAAAAAAAAAD/AAA/+Af4H///////gf4B/8AAD/AAAAAAAAAAAAAAAP8AAH/wD/gfx////j+B/wD/4AAP8AAAAAAAAAAAAAAA/wAA/8Af8D8H///+D8D/gD/wAA/wAAAAAAAAAAAAAAD/AAP/gH/gPgP///wHwH/gH/wAD/AAAAAAAAAAAAAAAP8AB/8A/8B8A////APgP/AP/gAP8AAAAAAAAAAAAAAA/wAf/gH/gPwB///4A/Af+Af/gA/wAAAAAAAAAAAAAAD/AD/4A/8A+AH///gB8A/8Af/AD/AAAAAAAAAAAAAAAP8Af/AH/gH4A////AH4B/4A/+AP8AAAAAAAAAAAAAAA/wH/4A/8A/AH///+APwD/wB/+A/wAAAAAAAAAAAAAAD/A/+AP/gD8Af///4A/AH/wB/8D/AAAAAAAAAAAAAAAP8P/wB/8AfgD////wB+AP/gD/8P8AAAAAAAAAAAAAAA/x/+AP/wD+Af////gH8A//AH/4/wAAAAAAAAAAAAAAH/P/wB/+APwB////+APwB/+AP/z/gAAAAAAAAAAAAAAf//8AP/wB/AP////8A/gD/8AP//+AAAAAAAAAAAAAAB///gB/+AP4B/////4B/AH/4Af//4AAAAAAAAAAAAAAH//8Af/wA/gH/////gH8AP/4A///gAAAAAAAAAAAAAAf//AD/+AH8A//////AP4Af/wA//+AAAAAAAAAAAAAAB//4Af/wA/wD/////8A/wA//gB//4AAAAAAAAAAAAAAH//AD/+AD+Af/////4B/AB//AD//gAAAAAAAAAAAAAAf/4Af/wAf4B//////gH+AD/+AH/+AAAAAAAAAAAAAAB/+AD/+AD/AH/////+AP8AH/8AH/4AAAAAAAAAAAAAAH/wA//wAP8Af/////4A/wAP/8AP/gAAAAAAAAAAAAAAf+AH/+AB/gB//////gB/gAf/4Af+AAAAAAAAAAAAAAB/wA//wAP+AD/////8AH/AA//wA/4AAAAAAAAAAAAAAH8AH/+AA/wAP/////wAP8AB//gA/gAAAAAAAAAAAAAAfgA//wAH/AA//////AA/4AD//AB+AAAAAAAAAAAAAAA8AH/+AAf4AD/////8AB/gAH/+ADwAAAAAAAAAAAAAADAA//4AD/gAP/////wAH/AAf/8ADAAAAAAAAAAAAAAAIAP//AAf8AA//////AAP+AA//8AEAAAAAAAAAAAAAAAAB//4AB/wAD/////8AA/4AB//4AAAAAAAAAAAAAAAAAAP//AAP+AAP/////wAB/wAD//wAAAAAAAAAAAAAAAAAB//4AB/4AAf////+AAH/gAH//gAAAAAAAAAAAAAAAAAP//AAH/AAB/////4AAP+AAP//AAAAAAAAAAAAAAAAAB//4AA/8AAH/////gAA/8AAf/+AAAAAAAAAAAAAAAAAf//AAH/gAAf////+AAB/4AA//+AAAAAAAAAAAAAAAAD//4AAf+AAB/////4AAH/gAB//8AAAAAAAAAAAAAAAAf//AAD/wAAH/////gAAP/AAD//4AAAAAAAAAAAAAAAD//4AAf/AAAP////8AAA/+AAH//wAAAAAAAAAAAAAAAf//AAB/4AAA/////wAAB/4AAP//gAAAAAAAAAAAAAAD//4AAP/gAAD/////AAAH/wAAf//AAAAAAAAAAAAAAAf//AAB/8AAAP////8AAAP/gAA//+AAAAAAAAAAAAAAD//4AAH/wAAA/////wAAA/+AAB//8AAAAAAAAAAAAAAf//AAA/+AAAB////+AAAB/8AAD//4AAAAAAAAAAAAAD//4AAD/4AAAH////4AAAH/wAAH//wAAAAAAAAAAAAAP//gAAf/AAAAf////gAAAP/gAAf//AAAAAAAAAAAAAA//8AAD/8AAAB////+AAAA//AAA//8AAAAAAAAAAAAAD//gAAP/gAAAH////4AAAB/8AAB//wAAAAAAAAAAAAAP/8AAB/+AAAAP////AAAAH/4AAD//AAAAAAAAAAAAAA//gAAP/wAAAA////8AAAAP/wAAH/8AAAAAAAAAAAAAD/+AAA//AAAAD////wAAAA//AAAf/wAAAAAAAAAAAAAP/4AAH/4AAAAP////AAAAB/+AAB//AAAAAAAAAAAAAAf/gAA//gAAAAf///4AAAAH/8AAH/4AAAAAAAAAAAAAB/+AAD/8AAAAB////gAAAAP/wAAf/gAAAAAAAAAAAAAH/4AAf/wAAAAH///+AAAAA//gAB/+AAAAAAAAAAAAAAf/gAD/+AAAAAf///4AAAAB//AAH/4AAAAAAAAAAAAAB/+AAP/4AAAAA////AAAAAH/8AAf/gAAAAAAAAAAAAAH/4AB//AAAAAD///8AAAAAP/4AB/+AAAAAAAAAAAAAAf/AAH/8AAAAAP///wAAAAA//gAD/4AAAAAAAAAAAAAA/8AAf/gAAAAA////AAAAAB/+AAP/AAAAAAAAAAAAAAD/wAB/+AAAAAB///4AAAAAH/4AA/8AAAAAAAAAAAAAAP/AAH/4AAAAAH///gAAAAAf/gAD/wAAAAAAAAAAAAAA/8AAf/gAAAAAf//+AAAAAB/+AAP/AAAAAAAAAAAAAAD/wAB/+AAAAAA///wAAAAAH/4AA/8AAAAAAAAAAAAAAP/gAH/4AAAAAD///AAAAAAf/gAH/wAAAAAAAAAAAAAAf+AAP/gAAAAAP//8AAAAAB/8AAf+AAAAAAAAAAAAAAB/4AA/+AAAAAAf//gAAAAAH/wAB/4AAAAAAAAAAAAAAH/gAD/4AAAAAB//+AAAAAAf/AAH/gAAAAAAAAAAAAAAf+AAP/gAAAAAH//4AAAAAB/8AAf+AAAAAAAAAAAAAAB/4AA/+AAAAAAP//AAAAAAH/wAB/4AAAAAAAAAAAAAAH/gAD/4AAAAAA//8AAAAAAf/AAH/gAAAAAAAAAAAAAAP+AAP/gAAAAAD//wAAAAAB/8AAf8AAAAAAAAAAAAAAA/4AA/+AAAAAAH/+AAAAAAH/wAB/wAAAAAAAAAAAAAAD/gAB/4AAAAAAfn4AAAAAAf+AAH/AAAAAAAAAAAAAAAP+AAH/gAAAAAA4HAAAAAAB/4AAf8AAAAAAAAAAAAAAA/4AAf+AAAAAACAEAAAAAAH/gAB/wAAAAAAAAAAAAAAB/gAB/8AAAAAAAAAAAAAAA/+AAH+AAAAAAAAAAAAAAAH+AAH/wAAAAAAAAAAAAAAD/4AAf4AAAAAAAAAAAAAAAf4AAf/AAAAAAAAAAAAAAAP/gAB/gAAAAAAAAAAAAAAB/wAB/8AAAAAAAAAAAAAAA/+AAP+AAAAAAAAAAAAAAAD/AAD/wAAAAAAAAAAAAAAD/wAA/wAAAAAAAAAAAAAAAP8AAP/AAAAAAAAAAAAAAAP/AAD/AAAAAAAAAAAAAAAA/wAA/8AAAAAAAAAAAAAAA/8AAP8AAAAAAAAAAAAAAAD/AAD/wAAAAAAAAAAAAAAD/wAA/wAAAAAAAAAAAAAAAH8AAP/AAAAAAAAAAAAAAAP/AAD+AAAAAAAAAAAAAAAAfwAA/8AAAAAAAAAAAAAAA/8AAP4AAAAAAAAAAAAAAAB/gAB/wAAAAAAAAAAAAAAD/gAB/gAAAAAAAAAAAAAAAH+AAH/AAAAAAAAAAAAAAAP+AAH+AAAAAAAAAAAAAAAAP4AAf+AAAAAAAAAAAAAAB/4AAfwAAAAAAAAAAAAAAAA/gAB/4AAAAAAAAAAAAAAH/gAB/AAAAAAAAAAAAAAAAD+AAH/gAAAAAAAAAAAAAAf+AAH8AAAAAAAAAAAAAAAAP4AAP+AAAAAAAAAAAAAAB/wAAfwAAAAAAAAAAAAAAAAfwAA/4AAAAAAAAAAAAAAH/AAD+AAAAAAAAAAAAAAAAB/AAD/gAAAAAAAAAAAAAAf8AAP4AAAAAAAAAAAAAAAAH8AAP+AAAAAAAAAAAAAAB/wAA/gAAAAAAAAAAAAAAAAPwAAf4AAAAAAAAAAAAAAH+AAD8AAAAAAAAAAAAAAAAA/AAB/wAAAAAAAAAAAAAA/4AAPwAAAAAAAAAAAAAAAAD+AAH/AAAAAAAAAAAAAAD/gAB/AAAAAAAAAAAAAAAAAH4AAf8AAAAAAAAAAAAAAP+AAH4AAAAAAAAAAAAAAAAAfgAA/wAAAAAAAAAAAAAA/wAAfgAAAAAAAAAAAAAAAAB+AAD/AAAAAAAAAAAAAAD/AAB+AAAAAAAAAAAAAAAAAD8AAP8AAAAAAAAAAAAAAP8AAPwAAAAAAAAAAAAAAAAAPwAA/4AAAAAAAAAAAAAB/wAA/AAAAAAAAAAAAAAAAAA/AAB/gAAAAAAAAAAAAAH+AAD8AAAAAAAAAAAAAAAAAB8AAH+AAAAAAAAAAAAAAf4AAPgAAAAAAAAAAAAAAAAAH4AAf4AAAAAAAAAAAAAB/gAB+AAAAAAAAAAAAAAAAAAPgAB/gAAAAAAAAAAAAAH+AAHwAAAAAAAAAAAAAAAAAA+AAD/AAAAAAAAAAAAAA/wAAfAAAAAAAAAAAAAAAAAAD8AAP8AAAAAAAAAAAAAD/AAD8AAAAAAAAAAAAAAAAAAHwAA/wAAAAAAAAAAAAAP8AAPgAAAAAAAAAAAAAAAAAAfAAB/AAAAAAAAAAAAAA/gAA+AAAAAAAAAAAAAAAAAAA+AAH8AAAAAAAAAAAAAD+AAHwAAAAAAAAAAAAAAAAAAD4AAf4AAAAAAAAAAAAAf4AAfAAAAAAAAAAAAAAAAAAAHgAA/gAAAAAAAAAAAAB/AAB4AAAAAAAAAAAAAAAAAAAfAAD+AAAAAAAAAAAAAH8AAPgAAAAAAAAAAAAAAAAAAA8AAP4AAAAAAAAAAAAAfwAA8AAAAAAAAAAAAAAAAAAADwAA/wAAAAAAAAAAAAD/AADwAAAAAAAAAAAAAAAAAAAPgAB/AAAAAAAAAAAAAP4AAfAAAAAAAAAAAAAAAAAAAAeAAH8AAAAAAAAAAAAA/gAB4AAAAAAAAAAAAAAAAAAAB4AAfwAAAAAAAAAAAAD+AAHgAAAAAAAAAAAAAAAAAAADwAA/gAAAAAAAAAAAAfwAA8AAAAAAAAAAAAAAAAAAAAHAAD+AAAAAAAAAAAAB/AADgAAAAAAAAAAAAAAAAAAAAeAAP4AAAAAAAAAAAAH8AAeAAAAAAAAAAAAAAAAAAAAA4AAfgAAAAAAAAAAAAfgABwAAAAAAAAAAAAAAAAAAAADgAB/AAAAAAAAAAAAD+AAHAAAAAAAAAAAAAAAAAAAAAHAAH8AAAAAAAAAAAAP4AA4AAAAAAAAAAAAAAAAAAAAAcAAPwAAAAAAAAAAAA/AADgAAAAAAAAAAAAAAAAAAAAA4AA/AAAAAAAAAAAAD8AAcAAAAAAAAAAAAAAAAAAAAABgAD+AAAAAAAAAAAAfwABgAAAAAAAAAAAAAAAAAAAAAHAAH4AAAAAAAAAAAB+AAOAAAAAAAAAAAAAAAAAAAAAAMAAfgAAAAAAAAAAAH4AAwAAAAAAAAAAAAAAAAAAAAAAQAA+AAAAAAAAAAAAfAACAAAAAAAAAAAAAAAAAAAAAABgAD8AAAAAAAAAAAD8AAYAAAAAAAAAAAAAAAAAAAAAADAAPwAAAAAAAAAAAPwADAAAAAAAAAAAAAAAAAAAAAAAEAAfAAAAAAAAAAAA+AAIAAAAAAAAAAAAAAAAAAAAAAAYAB+AAAAAAAAAAAH4ABgAAAAAAAAAAAAAAAAAAAAAAAgAD4AAAAAAAAAAAfAAEAAAAAAAAAAAAAAAAAAAAAAAAAAPgAAAAAAAAAAB8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAeAAAAAAAAAAAHgAAAAAAAAAAAAAAAAAAAAAAAAAAAAB8AAAAAAAAAAA+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAHwAAAAAAAAAAD4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAPAAAAAAAAAAAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA+AAAAAAAAAAB8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAB4AAAAAAAAAAHgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHgAAAAAAAAAAeAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPAAAAAAAAAADwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AAAAAAAAAAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAAAAAAAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHgAAAAAAAAAHgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4AAAAAAAAABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAAAAAAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4AAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgAAAAAAAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAAAAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" },
+    { name: "Angular legs", b64: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/gAAAAAAAAAAAAAAAAAAAAAAAAfwAAAAAAAAAAAAAA/AAAAAAAAAAAAAAAAAAAAAAAAAAD8AAAAAAAAAAAAA/wAAAAAAAAAAAAAAAAAAAAAAAAAAD/AAAAAAAAAAAAf8AAAAAAAAAAAAAAAAAAAAAAAAAAAD/gAAAAAAAAAAf8AAAAAAAAAAAAAAAAAAAAAAAAAAAAA/4AAAAAAAAAP/gAAAAAAAAAAAAAAAAAAAAAAAAAAAAB/8AAAAAAAAP/gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAf/AAAAAAAD/4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAf/AAAAAAD/8AAAAAAD/gAAAAAAAAAAAAAAB/wAAAAAAP/wAAAAB//AAAAAAH/4AAAAAAAAAAAAAAAB/+AAAAAAP/4AAAA//gAAAAAf/wAAAAAAAAAAAAAAAAAP/4AAAAAH/8AAAH/8AAAAAP/4AAAAAAAAAAAAAAAAAAH/8AAAAAP/4AAD/+AAAAA//gAAAAAAAAAAAAAAAAAAAAf/wAAAAH/8AAP/gAAAAf/4AAAAAAAAAAAAAAAAAAAAAf/4AAAAH/wAA/4AAAB//wAAAAAAAAAAAAAAAAAAAAAAD//gAAAH/AAB/AAAAf/8AAAAAAAAAAAAAAAAAAAAAAAD//gAAAP4AAH4AAAH/4AAAAAAAAAAAAAAAAAAAAAAAAAf/gAAAfgAAfAAAAf+AAAAAAAAAAAAAAAAAAAAAAAAAAf+AAAA+AAB8AAAB/gAAAAAAAAAAAAAAAAAAAAAAAAAAf4AAAD4AAHwAAAD8AAAAAAAAAAAAAAAAAAAAAAAAAAA/AAAAPgAAfAAAAfwAAAAAAAAAAAAAAAAAAAAAAAAAAD+AAAA+AAB8AAAB+AAAAAAAAAAAAAAAAAAAAAAAAAAAH4AAAD4AAHwAAAH4AAAAAAAAAAAAAAAAAAAAAAAAAAAfgAAAPgAAfAAAAfgAAAAAAAAAAAAAAAAAAAAAAAAAAB+AAAA+AAA8AAAB+AAAAAAAAAAAAAAAAAAAAAAAAAAAH4AAADwAADwAAAH4AAAAAAAAAAAAAAAAAAAAAAAAAAAfgAAAPAAAPAAAAfgAAAAAAAAAAAAAAAAAAAAAAAAAAB+AAAA8AAA+AAAB+AAAAAAAAAAAAAAAAAAAAAAAAAAAH4AAAHwAAD4AAAH4AAAAAAAAAAAAAAAAAAAAAAAAAAAfgAAAfAAAPgAAAPgAAAAAAAAAAAAAAAAAAAAAAAAAAB8AAAB8AAA+AAAA+AAAAAAAAAAAAAAAAAAAAAAAAAAAHwAAAHwAAB4AAAD4AAAAAAAAAAAAAAAAAAAAAAAAAAAfAAAAeAAAHgAAAPgAAAAAAAAAAAAAAAAAAAAAAAAAAB8AAAB4AAAeAAAA/AAAAAAAAAAAAAAAAAAAAAAAAAAAPwAAAHgAAB8AAAB8AAAAAAAAAAAAAAAAAAAAAAAAAAA+AAAA+AAAHwAAAHwAAAAAAAAAAAAAAAAAAAAAAAAAAD4AAAD4AAAPAAAAfgAAAAAAAAAAAAAAAAAAAAAAAAAAfgAAAPAAAA+AAAA+AAAAAAAAAAAAAAAAAAAAAAAAAAB8AAAB8AAAD4AAAD8AAAAAAAAAAAAAAAAAAAAAAAAAAPwAAAHwAAAHgAAAPwAAAAAAAAAAAAAAAAAAAAAAAAAA/AAAAeAAAAeAAAAfAAAAAAAAAAAAAAAAAAAAAAAAAAD4AAAB4AAAB8AAAA+AAAAAAAAAAAAAAAAAAAAAAAAAAfAAAAPgAAAHwAAAD8AAAAAAAAAAAAAAAAAAAAAAAAAD8AAAA+AAAAPgAAAHwAAAAAAAAAAAAAAAAAAAAAAAAAPgAAAHwAAAA+AAAAfgAAAAAAAAAAAAAAAAAAAAAAAAB+AAAAfAAAAD4AAAA+AAAAf/4AAAAAAAAAAAB//gAAAHwAAAB8AAAAHwAAAD8AAH///wAAAAAAAAAAAP///gAA/AAAAPgAAAAfAAAAH4H/////gAAAAAAAAAAB/////4H4AAAA+AAAAB+AAAAfz//////AAAAAAAAAAAP/////8/gAAAH4AAAAD4AAAA/////4f+AAAAAAAAAAB/4f////8AAAAfAAAAAPgAAAD///gAAf4AAAAAAAAAAH+AAB///wAAAB8AAAAAfAAAAH/+AAAAf4AAAAAAAAAB/gAAAH/+AAAAPgAAAAB+AAAAP/gAAAA/gAAAAAAAAAH8AAAAH/wAAAB+AAAAAH4AAAA/gAAAAA/gAAAAAAAAB/AAAAAB/AAAAH4AAAAAPgAAAD8AAAAAB+AAAAAAAAAH4AAAAAD8AAAAfAAAAAAfAAAACAAAAAAD+AAAAAAAAB/AAAAAABAAAAD4AAAAAB+AAAAAAAAAAAH4AAAAAAAAH4AAAAAAAAAAAfgAAAAAH4AAAAAAAAAAAH4AAAAAAAB+AAAAAAAAAAAB+AAAAAAPwAAAAAAAAAAAPwAAAAAAAPwAAAAAAAAAAAPwAAAAAAfAAAAAAAAAAAAfgAAAAAAB+AAAAAAAAAAAA+AAAAAAB+AAAAAAAAAAAA/AAAAAAAPwAAAAAAAAAAAH4AAAAAAH4AAAAAAAAAAAA+AAAAAAB8AAAAAAAAAAAAfgAAAAAAPwAAAAAAAAAAAB8ADAAwAPgAAAAAAAAAAAD8AAAAAAA/gAAAAAAADwAAD4AcADgB8AAA8AAAAAAAAfwAAAAAAB+AAAAAAAA/gAAHwDgAHAPgAAH8AAAAAAAB+AAAAAAAH8AAAAAAAf/gAAPgcAAOB8AAB/+AAAAAAAP4AAAAAAAPwAAAAAAH//gAAfBwAA4PgAAf/+AAAAAAA/AAAAAAAAfgAAAAAH///gAA/HAADj8AAH///gAAAAAH4AAAAAAAB/AAAAAB//P/wAD+c4HOfwAD/8//gAAAAA/gAAAAAAAD+AAAAA//gH/8AH/3w+/+AD/+Af/wAAAAH8AAAAAAAAH4AAAAf/wAD//gP//n//wH//AAP/4AAAAfgAAAAAAAAfwAAAP/4AAD//w//////D//wAAH/8AAAD+AAAAAAAAAfgAAH/4AAAA//3/////+//wAAAB/+AAAfgAAAAAAAAB/AAD/+AAAAA//////////8AAAAB//AAD+AAAAAAAAAD+AA//AAAAAAf////////+AAAAAA//AAfwAAAAAAAAAH8AP/wAAAAAAf////////gAAAAAA//AD+AAAAAAAAAAf4H/4AAAAAAAP///////wAAAAAAAf/gf4AAAAAAAAAA/w/+AAAAAAAAf//////+AAAAAAAAf/D/AAAAAAAAAAB///AAAAAAAAAf//////gAAAAAAAAP//4AAAAAAAAAAD//4AAAAAAAAB//////+AAAAAAAAAf//AAAAAAAAAAAH/+AAAAAAwAAH//////4AADAAAAAAf/4AAAAAAAAAAAf/gAAAAAH+B/////////4H+AAAAAAf/gAAAAAAAAAAA/8AAAAAB//////////////+AAAAAA/8AAAAAAAAAAAB/gAAAAAP//////////////8AAAAAB/gAAAAAAAAAAAD8AAAAAB///////////////4AAAAAD8AAAAAAAAAAAAHgAAAAAP///////////////wAAAAAHgAAAAAAAAAAAAeAAAAAD/+AAB//////gAAf/wAAAAAeAAAAAAAAAAAAA4AAAAAf8AAAH/////+AAAD/gAAAABwAAAAAAAAAAAAAAAAAAH+AAAB//////+AAAB/gAAAAAAAAAAAAAAAAAAAAAAAA/wAAAP//////8AAAD/AAAAAAAAAAAAAAAAAAAAAAAAf8AAAH///////+AAAD/gAAAAAAAAAAAAAAAAAAAAAAD/AAAB/+f///5/+AAAD/AAAAAAAAAAAAAAAAAAAAAAA/wAAA//h////h//AAAD/AAAAAAAAAAAAAAAAAAAAAAP+AAAP/8H///+D//AAAH/AAAAAAAAAAAAAAAAAAAAAD/gAAH//Af///4D//gAAH/AAAAAAAAAAAAAAAAAAAAAf4AAD//wD////wD//wAAH+AAAAAAAAAAAAAAAAAAAAH+AAA//wAP////AA//wAAH+AAAAAAAAAAAAAAAAAAAB/wAAH/4AA////8AAf/gAAP+AAAAAAAAAAAAAAAAAAAf8AAAf+AAH////4AAf+AAAP+AAAAAAAAAAAAAAAAAAH/AAAD/gAAf////gAAf8AAAP+AAAAAAAAAAAAAAAAAA/4AAAf4AAD/////AAAf4AAAf8AAAAAAAAAAAAAAAAAP+AAAB+AAAf////+AAAfgAAAf8AAAAAAAAAAAAAAAAB/wAAAP4AAB/////4AAB/AAAA/4AAAAAAAAAAAAAAAAf8AAAB/AAAP/////wAAD+AAAA/4AAAAAAAAAAAAAAAD/gAAAP4AAA//////AAAH8AAAB/wAAAAAAAAAAAAAAA/4AAAB/gAAD/////8AAAf4AAAB/wAAAAAAAAAAAAAAP/AAAAP8AAAP/////wAAA/wAAAD/wAAAAAAAAAAAAAA/4AAAB/gAAA//////AAAB/gAAAH/AAAAAAAAAAAAAAH/AAAAH+AAAD/////8AAAH+AAAAP+AAAAAAAAAAAAAAf8AAAA/wAAAP/////wAAAP8AAAA/4AAAAAAAAAAAAAB/wAAAD/AAAA//////AAAA/wAAAD/gAAAAAAAAAAAAAH+AAAAP8AAAD/////8AAAD/AAAAH+AAAAAAAAAAAAAAf4AAAA/wAAAP/////wAAAP8AAAAf4AAAAAAAAAAAAAB/gAAAD+AAAAf////+AAAAfwAAAB/gAAAAAAAAAAAAAH+AAAAP4AAAB/////4AAAB/AAAAH+AAAAAAAAAAAAAAf4AAAA/gAAAH/////gAAAH8AAAAf4AAAAAAAAAAAAAB/gAAAD+AAAAf////+AAAAfwAAAB/gAAAAAAAAAAAAAH8AAAAP4AAAB/////4AAAB/AAAAD+AAAAAAAAAAAAAAfwAAAA/gAAAH/////gAAAH8AAAAP4AAAAAAAAAAAAAB/AAAAD+AAAAf////+AAAAfwAAAA/gAAAAAAAAAAAAAH8AAAAP4AAAB/////4AAAB/AAAAD+AAAAAAAAAAAAAAfwAAAA/gAAAD/////AAAAH8AAAAP4AAAAAAAAAAAAAB/AAAAD+AAAAP////8AAAAfwAAAA/gAAAAAAAAAAAAAH8AAAAH4AAAA/////wAAAB+AAAAD+AAAAAAAAAAAAAAfwAAAAfgAAAD/////AAAAH4AAAAP4AAAAAAAAAAAAAB/AAAAB+AAAAP////8AAAAfgAAAA/gAAAAAAAAAAAAAH8AAAAH4AAAAf////gAAAB+AAAAD+AAAAAAAAAAAAAAP4AAAAfgAAAB////+AAAAH4AAAAfwAAAAAAAAAAAAAA/gAAAB+AAAAH////4AAAAfgAAAB/AAAAAAAAAAAAAAD+AAAAH4AAAAf////gAAAB+AAAAH8AAAAAAAAAAAAAAP4AAAAfwAAAB////+AAAAP4AAAAfwAAAAAAAAAAAAAA/wAAAB/AAAAD////wAAAA/gAAAD/AAAAAAAAAAAAAAB/AAAAH8AAAAP////AAAAD+AAAAP4AAAAAAAAAAAAAAH8AAAAfwAAAA////8AAAAP4AAAA/gAAAAAAAAAAAAAAfwAAAB/AAAAD////wAAAA/gAAAD+AAAAAAAAAAAAAAB/AAAAD+AAAAH///+AAAAH8AAAAP4AAAAAAAAAAAAAAD8AAAAP4AAAAf///4AAAAfwAAAA/AAAAAAAAAAAAAAAP4AAAA/gAAAA////AAAAB/AAAAH8AAAAAAAAAAAAAAA/gAAAD+AAAAD///8AAAAH8AAAAfwAAAAAAAAAAAAAAD/AAAAP4AAAAP///wAAAAfwAAAD/AAAAAAAAAAAAAAAH8AAAA/gAAAA////AAAAB/AAAAP4AAAAAAAAAAAAAAAfwAAAB+AAAAB///4AAAAH4AAAA/gAAAAAAAAAAAAAAB/AAAAH4AAAAH///gAAAAfgAAAD+AAAAAAAAAAAAAAAD+AAAAfwAAAAP//8AAAAD+AAAAfwAAAAAAAAAAAAAAAP4AAAB/AAAAA///wAAAAP4AAAB/AAAAAAAAAAAAAAAA/wAAAH8AAAAD///AAAAA/gAAAP8AAAAAAAAAAAAAAAB/AAAAfwAAAAP//8AAAAD+AAAA/gAAAAAAAAAAAAAAAH8AAAB/AAAAA///wAAAAP4AAAD+AAAAAAAAAAAAAAAAfwAAAH+AAAAB//+AAAAB/gAAAP4AAAAAAAAAAAAAAAA/gAAAP4AAAAH//4AAAAH8AAAB/AAAAAAAAAAAAAAAAD+AAAA/gAAAAP//AAAAAfwAAAH8AAAAAAAAAAAAAAAAP8AAAD+AAAAA//8AAAAB/AAAA/wAAAAAAAAAAAAAAAAfwAAAP4AAAAD//wAAAAH8AAAD+AAAAAAAAAAAAAAAAB/AAAA/gAAAAP//AAAAAfwAAAP4AAAAAAAAAAAAAAAAD8AAAB+AAAAAf/4AAAAB+AAAA/AAAAAAAAAAAAAAAAAP4AAAH4AAAAB//gAAAAH4AAAH8AAAAAAAAAAAAAAAAA/gAAAfgAAAAD/8AAAAAfgAAAfwAAAAAAAAAAAAAAAAD+AAAB+AAAAAP/wAAAAB+AAAB/AAAAAAAAAAAAAAAAAH8AAAH4AAAAA//AAAAAH4AAAP4AAAAAAAAAAAAAAAAAPwAAAfgAAAAD/8AAAAAfgAAA/AAAAAAAAAAAAAAAAAA/AAAB+AAAAAHDgAAAAB+AAAD8AAAAAAAAAAAAAAAAAD8AAAH8AAAAAAAAAAAAP4AAAPwAAAAAAAAAAAAAAAAAH4AAAfwAAAAAAAAAAAA/gAAB+AAAAAAAAAAAAAAAAAAfgAAA/AAAAAAAAAAAAD8AAAH4AAAAAAAAAAAAAAAAAA/AAAD8AAAAAAAAAAAAPwAAA/AAAAAAAAAAAAAAAAAAD8AAAP4AAAAAAAAAAAB/AAAD8AAAAAAAAAAAAAAAAAAPwAAA/gAAAAAAAAAAAH8AAAPwAAAAAAAAAAAAAAAAAAfgAAB+AAAAAAAAAAAAfgAAB+AAAAAAAAAAAAAAAAAAA+AAAH4AAAAAAAAAAAB+AAAHwAAAAAAAAAAAAAAAAAAD8AAAfgAAAAAAAAAAAH4AAA/AAAAAAAAAAAAAAAAAAAPwAAB+AAAAAAAAAAAAfgAAD8AAAAAAAAAAAAAAAAAAAfAAAH4AAAAAAAAAAAB+AAAPgAAAAAAAAAAAAAAAAAAB8AAAPgAAAAAAAAAAAHwAAA+AAAAAAAAAAAAAAAAAAAD4AAA+AAAAAAAAAAAAfAAAHwAAAAAAAAAAAAAAAAAAAPgAAD8AAAAAAAAAAAD8AAAfAAAAAAAAAAAAAAAAAAAAfAAAPwAAAAAAAAAAAPwAAD4AAAAAAAAAAAAAAAAAAAB8AAAfAAAAAAAAAAAA+AAAPgAAAAAAAAAAAAAAAAAAAD4AAB8AAAAAAAAAAAD4AAB8AAAAAAAAAAAAAAAAAAAAPgAAH4AAAAAAAAAAAfgAAHwAAAAAAAAAAAAAAAAAAAAfAAAfgAAAAAAAAAAB+AAA+AAAAAAAAAAAAAAAAAAAAB8AAB+AAAAAAAAAAAH4AAD4AAAAAAAAAAAAAAAAAAAADwAAD4AAAAAAAAAAAfAAAPAAAAAAAAAAAAAAAAAAAAAPgAAPgAAAAAAAAAAB8AAB8AAAAAAAAAAAAAAAAAAAAA+AAAeAAAAAAAAAAAHgAAHwAAAAAAAAAAAAAAAAAAAAB8AAB4AAAAAAAAAAAeAAA+AAAAAAAAAAAAAAAAAAAAADwAAHwAAAAAAAAAAD4AADwAAAAAAAAAAAAAAAAAAAAAPAAAfAAAAAAAAAAAPgAAPAAAAAAAAAAAAAAAAAAAAAA+AAB8AAAAAAAAAAA+AAB8AAAAAAAAAAAAAAAAAAAAAB4AAD4AAAAAAAAAAHwAAHgAAAAAAAAAAAAAAAAAAAAAHwAAPgAAAAAAAAAAfAAA+AAAAAAAAAAAAAAAAAAAAAAPAAA+AAAAAAAAAAB8AADwAAAAAAAAAAAAAAAAAAAAAA+AAB4AAAAAAAAAAHgAAfAAAAAAAAAAAAAAAAAAAAAAB4AAHgAAAAAAAAAAeAAB4AAAAAAAAAAAAAAAAAAAAAAHgAAfAAAAAAAAAAD4AAHgAAAAAAAAAAAAAAAAAAAAAAPAAA8AAAAAAAAAAPAAA8AAAAAAAAAAAAAAAAAAAAAAA8AADwAAAAAAAAAA8AADwAAAAAAAAAAAAAAAAAAAAAAB4AAHgAAAAAAAAAHgAAeAAAAAAAAAAAAAAAAAAAAAAAHgAAeAAAAAAAAAAeAAB4AAAAAAAAAAAAAAAAAAAAAAAOAAB4AAAAAAAAAB4AAHAAAAAAAAAAAAAAAAAAAAAAAA8AAHgAAAAAAAAAHgAA8AAAAAAAAAAAAAAAAAAAAAAADwAAPAAAAAAAAAA8AADwAAAAAAAAAAAAAAAAAAAAAAAHgAAcAAAAAAAAADgAAeAAAAAAAAAAAAAAAAAAAAAAAAeAAB4AAAAAAAAAeAAB4AAAAAAAAAAAAAAAAAAAAAAAA4AAHgAAAAAAAAB4AAHAAAAAAAAAAAAAAAAAAAAAAAADwAAeAAAAAAAAAHgAA8AAAAAAAAAAAAAAAAAAAAAAAAHAAA4AAAAAAAAAcAADgAAAAAAAAAAAAAAAAAAAAAAAAcAABwAAAAAAAADgAAOAAAAAAAAAAAAAAAAAAAAAAAAA4AAHAAAAAAAAAOAABwAAAAAAAAAAAAAAAAAAAAAAAADgAAeAAAAAAAAB4AAHAAAAAAAAAAAAAAAAAAAAAAAAAOAAB4AAAAAAAAHgAAcAAAAAAAAAAAAAAAAAAAAAAAAAcAADgAAAAAAAAcAADgAAAAAAAAAAAAAAAAAAAAAAAABwAAOAAAAAAAABwAAOAAAAAAAAAAAAAAAAAAAAAAAAADgAAcAAAAAAAAOAABwAAAAAAAAAAAAAAAAAAAAAAAAAOAABwAAAAAAAA4AAHAAAAAAAAAAAAAAAAAAAAAAAAAA4AAHgAAAAAAAHgAAcAAAAAAAAAAAAAAAAAAAAAAAAABwAAOAAAAAAAAcAADgAAAAAAAAAAAAAAAAAAAAAAAAAHgAA4AAAAAAABwAAeAAAAAAAAAAAAAAAAAAAAAAAAAAOAABgAAAAAAAGAABwAAAAAAAAAAAAAAAAAAAAAAAAAAYAAHAAAAAAAA4AAGAAAAAAAAAAAAAAAAAAAAAAAAAABwAAcAAAAAAADgAA4AAAAAAAAAAAAAAAAAAAAAAAAAAHgAB4AAAAAAAeAAHgAAAAAAAAAAAAAAAAAAAAAAAAAAOAADgAAAAAABwAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAYAAGAAAAAAAGAABgAAAAAAAAAAAAAAAAAAAAAAAAAABgAAYAAAAAAAYAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAHAABwAAAAAADgAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAOAADAAAAAAAMAAHAAAAAAAAAAAAAAAAAAAAAAAAAAAAYAAOAAAAAABwAAYAAAAAAAAAAAAAAAAAAAAAAAAAAABgAAYAAAAAAGAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAAgAAAAAAQAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAACAAAAAABAABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAABgAAAAAAAAAAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAADAAAAAAAAAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" },
+    { name: "Long legs",    b64: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgAAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAAAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAA4AABgAAAABgAAHAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAcAAAAADgAAHAAAAAAAAAAAAAAAAAAAAAAAAAAABwAADAAAAAADAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAA4AAAAAAHAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAA4AAHAAAAAAAOAABwAAAAAAAAAAAAAAAAAAAAAAAAAAHAAAwAAAAAAAMAADgAAAAAAAAAAAAAAAAAAAAAAAAAAcAADAAAAAAAAwAAOAAAAAAAAAAAAAAAAAAAAAAAAAADwAAYAAAAAAABgAA8AAAAAAAAAAAAAAAAAAAAAAAAAAOAABgAAAAAAAGAABwAAAAAAAAAAAAAAAAAAAAAAAAAA4AAMAAAAAAAAMAAHAAAAAAAAAAAAAAAAAAAAAAAAAAHgAAwAAAAAAAAwAAeAAAAAAAAAAAAAAAAAAAAAAAAAAeAAHAAAAAAAADgAB4AAAAAAAAAAAAAAAAAAAAAAAAAB4AAcAAAAAAAAOAAHgAAAAAAAAAAAAAAAAAAAAAAAAAHAADgAAAAAAAAcAAOAAAAAAAAAAAAAAAAAAAAAAAAAAcAAOAAAAAAAABwAA4AAAAAAAAAAAAAAAAAAAAAAAAADwAB4AAAAAAAAHgADwAAAAAAAAAAAAAAAAAAAAAAAAAPAAHgAAAAAAAAeAAPAAAAAAAAAAAAAAAAAAAAAAAAAA8AAeAAAAAAAAB4AA8AAAAAAAAAAAAAAAAAAAAAAAAADwAD4AAAAAAAAHwADwAAAAAAAAAAAAAAAAAAAAAAAAAPAAP/4AAAAAB//AAPAAAAAAAAAAAAAAAAAAAAAAAAAB8AA//wAAAAAP/8AA+AAAAAAAAAAAAAAAAAAAAAAAAAHwAD//gAgBAB//wAD4AAAAAAAAAAAAAAAAAAAAAAAAAfAAAD/gMADAf8AAAPgAAAAAAAAAAAAAAAAAAAAAAAAB8AAAA/BgAGD8AAAA+AAAAAAAAAAAAAAAAAAAAAAAAAHwAAAA/OAAc/AAAAD4AAAAAAAAAAAAAAAAAAAAAAAAAfgAAAA+YABnwAAAAfgAAAAAAAAAAAAAAAAAAAAAAAAB+AB/wB/3Dv+AP+AB+AAAAAAAAAAAAAAAAAAAAAAAAAH4B//+B////gf//gH4AAAAAAAAAAAAAAAAAAAAAAAAAfj////3///+////8fgAAAAAAAAAAAAAAAAAAAAAAAAB////////////////+AAAAAAAAAAAAAAAAAAAAAAAAAH//wAD//////wAD//4AAAAAAAAAAAAAAAAAAAAAAAAAf/4AAAP////AAAB//gAAAAAAAAAAAAAAAAAAAAAAAAAP8AAAAf///4AAAA/wAAAAAAAAAAAAAAAAAAAAAAAAAAeAAAAf////+AAAAeAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAD///////8AAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//////////8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH//////////4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB//AD///8AP/4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAf/AAf///4AD/4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAH/gAD////wAB/4AAAAAAAAAAAAAAAAAAAAAAAAAAAAA/4AAf////gAB/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/AAH/////gAD/wAAAAAAAAAAAAAAAAAAAAAAAAAAAD/wAB/D//w/gAD/wAAAAAAAAAAAAAAAAAAAAAAAAAAA/8AAf4f//h/gAD/wAAAAAAAAAAAAAAAAAAAAAAAAAAP/gAH+B//+B/gAH/wAAAAAAAAAAAAAAAAAAAAAAAAAD/4AD/wP//8D/wAH/wAAAAAAAAAAAAAAAAAAAAAAAAAf/AAf8A///wD/gAP/gAAAAAAAAAAAAAAAAAAAAAAAAH/wAB/gH///gH+AAP/gAAAAAAAAAAAAAAAAAAAAAAAB/+AAP8Af//+AP8AAf/gAAAAAAAAAAAAAAAAAAAAAAAP/gAA/gD///8AfwAAf/AAAAAAAAAAAAAAAAAAAAAAAB/8AAH8Af///4A/gAA/+AAAAAAAAAAAAAAAAAAAAAAAH/gAAfwB////gD+AAB/4AAAAAAAAAAAAAAAAAAAAAAA/4AAA/AH///+APwAAB/wAAAAAAAAAAAAAAAAAAAAAAH/gAAD8Af///4A/AAAH/gAAAAAAAAAAAAAAAAAAAAAAf8AAAPwA////AD8AAAP+AAAAAAAAAAAAAAAAAAAAAAA/4AAA/AD///8APwAAB/wAAAAAAAAAAAAAAAAAAAAAAB/gAAB8AP///wA+AAAH+AAAAAAAAAAAAAAAAAAAAAAAB/AAAHwA////AD4AAA/gAAAAAAAAAAAAAAAAAAAAAAAD/AAAfgD///8AfgAAP8AAAAAAAAAAAAAAAAAAAAAAAAH+AAA+AH///gB8AAB/gAAAAAAAAAAAAAAAAAAAAAAAAP+AAD8Af//+APwAAf8AAAAAAAAAAAAAAAAAAAAAAAAAf8AAPwB///4A/AAD/gAAAAAAAAAAAAAAAAAAAAAAAAA//AAfgH///gH4AD/8AAAAAAAAAAAAAAAAAAAAAAAAAB/+AB/AP//8A/gAf/gAAAAAAAAAAAAAAAAAAAAAAAAAD/4AH8A///wD+AB/8AAAAAAAAAAAAAAAAAAAAAAAAAAH/gAP4D///AfwAH/gAAAAAAAAAAAAAAAAAAAAAAAAAAP+AA/gH//4B/AAf8AAAAAAAAAAAAAAAAAAAAAAAAAAAf4AD+Af//gH8AB/gAAAAAAAAAAAAAAAAAAAAAAAAAAA/gAP4B//+AfwAH8AAAAAAAAAAAAAAAAAAAAAAAAAAAD/AAfgH//4B+AA/wAAAAAAAAAAAAAAAAAAAAAAAAAAAH8AB+AP//AH4AD+AAAAAAAAAAAAAAAAAAAAAAAAAAAAfwAH4A//8AfgAP4AAAAAAAAAAAAAAAAAAAAAAAAAAAB/AAPgD//wB8AA/gAAAAAAAAAAAAAAAAAAAAAAAAAAAD8AA+AH/+AHwAD8AAAAAAAAAAAAAAAAAAAAAAAAAAAAP4AD4Af/4AfAAfwAAAAAAAAAAAAAAAAAAAAAAAAAAAA/gAPwB//gD8AB/AAAAAAAAAAAAAAAAAAAAAAAAAAAAB+AAfAD/8APgAH4AAAAAAAAAAAAAAAAAAAAAAAAAAAAH4AB8AP/wA+AAfgAAAAAAAAAAAAAAAAAAAAAAAAAAAAfgAHwA//AD4AB+AAAAAAAAAAAAAAAAAAAAAAAAAAAAB+AAfAB/4APgAH4AAAAAAAAAAAAAAAAAAAAAAAAAAAAD4AA8AGBgA8AAfAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPwADwAYGADwAD8AAAAAAAAAAAAAAAAAAAAAAAAAAAAA/AAPgAgQAfAAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAD8AA+AAAAB8AA/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAHwAD4AAAAHwAD4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAfAAHgAAAAeAAPgAAAAAAAAAAAAAAAAAAAAAAAAAAAAB8AAeAAAAB4AA+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAHwAB4AAAAHgAD4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAPAAHgAAAAeAAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA+AAfAAAAD4AB8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAD4AB8AAAAPgAHwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPgADwAAAA8AAfAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA+AAPAAAADwAB8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAD4AA8AAAAPAAHwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHgADwAAAA8AAeAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAeAAPAAAADwAB4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAB4AA8AAAAPAAHgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHgADwAAAA8AAeAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAeAAPAAAADwAB4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAB4AA+AAAAfAAHgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHgAB4AAAB4AAeAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPAAHgAAAHgADwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AAeAAAAeAAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwAB4AAAB4AA8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPAAHgAAAHgADwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AAeAAAAeAAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwAB4AAAB4AA8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPAAHgAAAHgADwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AAeAAAAeAAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwAB4AAAB4AA8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAHgAAAHgADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAeAAAAeAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAB4AAAB4AA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAHgAAAHgADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAeAAAAeAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAB4AAAB4AA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAADgAAAHAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAOAAAAcAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAA8AAADwAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAADwAAAPAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAPAAAA8AAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAA8AAADwAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAADwAAAPAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAPAAAA8AAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAA8AAADwAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAADwAAAPAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAPAAAA8AAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAA8AAADwAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAADwAAAPAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAPAAAA8AAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAA8AAADwAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAADwAAAPAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAPAAAA8AAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAA8AAADwAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAADwAAAPAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAPAAAA8AAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAA8AAADwAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAADwAAAPAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAPAAAA8AAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAA8AAADwAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAADwAAAPAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAPAAAA8AAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAA8AAADwAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAABwAAAOAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAHAAAA4AAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAcAAADgAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAABwAAAOAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAHAAAA4AAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAcAAADgAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAABwAAAOAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAHAAAA4AAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAcAAADgAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAABwAAAOAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAHAAAA4AAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAcAAADgAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAABwAAAOAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAHAAAA4AAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAcAAADgAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAABwAAAOAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAHAAAA4AAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAcAAADgAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAABwAAAOAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAHAAAA4AAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYAAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYAAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYAAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" },
+  ];
+
+  /* Screen colours for the three kinds of module: [lit colour for yellow rows, lit colour for the rest] */
+  const SCREEN_COLOURS = {
+    two:   [[255, 210, 0], [80, 220, 255]],
+    white: [[244, 246, 248], [244, 246, 248]],
+    blue:  [[70, 150, 255], [70, 150, 255]],
+  };
+
+  /* Everything the controls can change, with the starting values. */
+  const state = {
+    spider: 0,          // which spider: 0, 1 or 2
+    angle: 0,           // degrees, clockwise
+    motion: "still",    // "still", "spin" or "swing"
+    dir: 1,             // 1 clockwise, -1 counter clockwise
+    speed: 90,          // degrees per second for spin and swing
+    swing: 30,          // swing range in degrees
+    step: 1,            // angle steps: 1 (smooth), 15, 45 or 90
+    size: 48,           // longest side of the spider in screen pixels
+    weight: 7,          // line weight 1 (thin) to 10 (bold)
+    cyan: false,        // true = centre the spider in the cyan rows only
+    invert: false,      // swap lit and dark pixels
+    grid: false,        // show the pixel grid over the preview
+    screen: "two",      // "two", "white" or "blue"
+    show: false,        // the glitch show is playing
+    trSpeed: 1,         // glitch show: transition speed, 0.25 to 4
+    hold: 1000,         // glitch show: how long each spider stays, in ms
+  };
+
+  /* =====================================================================
+     2. UNPACK THE SPIDER PICTURES
+     ===================================================================== */
+  for (const sp of SPIDERS) {
+    const bin = atob(sp.b64);
+    sp.bits = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) sp.bits[i] = bin.charCodeAt(i);
+
+    // A thinned list of lit points, used only to work out how far the spider reaches at an angle.
+    const pts = [];
+    for (let v = 0; v < M; v += 2)
+      for (let u = 0; u < M; u += 2)
+        if (sp.bits[(v << 5) + (u >> 3)] & (0x80 >> (u & 7))) pts.push(u + 1 - M / 2, v + 1 - M / 2);
+    sp.pts = Float32Array.from(pts);
+    let r = 0;
+    for (let i = 0; i < pts.length; i += 2) r = Math.max(r, Math.hypot(pts[i], pts[i + 1]));
+    sp.radius = r;                    // farthest lit point from the centre, in master pixels
+  }
+
+  /* =====================================================================
+     3. DRAWING
+     ===================================================================== */
+  const $ = (id) => document.getElementById(id);
+  const frame = new Uint8Array(W * H);      // the picture on the screen: 1 = lit, 0 = dark
+
+  /* The sampler. For every screen pixel, look back into the master picture at the turned and
+     scaled spot, take 16 samples, and light the pixel when at least "need" of them hit the spider.
+     The ESP32 sketch does exactly the same, so the board matches this preview pixel for pixel. */
+  function render(sp, out, w, h, cx, cy, size, deg, need) {
+    const k = SPAN / size;                              // master pixels per screen pixel
+    const rad = deg * Math.PI / 180, c = Math.cos(rad), s = Math.sin(rad);
+    const bits = sp.bits;
+    let lit = 0;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let hits = 0;
+        for (let j = 0; j < SS; j++) {
+          const dy = y + (j + 0.5) / SS - cy;
+          for (let i = 0; i < SS; i++) {
+            const dx = x + (i + 0.5) / SS - cx;
+            const u = Math.floor((dx * c + dy * s) * k + M / 2);
+            const v = Math.floor((-dx * s + dy * c) * k + M / 2);
+            if (u >= 0 && u < M && v >= 0 && v < M && (bits[(v << 5) + (u >> 3)] & (0x80 >> (u & 7)))) hits++;
+          }
+        }
+        const on = hits >= need ? 1 : 0;
+        out[y * w + x] = on;
+        lit += on;
+      }
+    }
+    return lit;
+  }
+
+  /* Paint a 1 bit picture onto a canvas in the colours of the chosen module. */
+  function paint(canvas, buf, invert) {
+    const ctx = canvas.getContext("2d");
+    const img = ctx.createImageData(canvas.width, canvas.height), d = img.data;
+    const [top, rest] = SCREEN_COLOURS[state.screen];
+    for (let p = 0; p < buf.length; p++) {
+      const on = invert ? !buf[p] : buf[p];
+      const col = ((p / canvas.width) | 0) < YELLOW_ROWS ? top : rest;
+      const o = p * 4;
+      d[o] = on ? col[0] : 0; d[o + 1] = on ? col[1] : 0; d[o + 2] = on ? col[2] : 0; d[o + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  /* =====================================================================
+     4. FIT MATHS: how big can the spider be without leaving the screen
+     ===================================================================== */
+  /* How far the spider reaches from its centre at this angle, in master pixels: [sideways, up, down] */
+  function reach(sp, deg) {
+    const rad = deg * Math.PI / 180, c = Math.cos(rad), s = Math.sin(rad), p = sp.pts;
+    let mx = 0, up = 0, down = 0;
+    for (let i = 0; i < p.length; i += 2) {
+      const x = p[i] * c - p[i + 1] * s, y = p[i] * s + p[i + 1] * c;
+      if (x > mx) mx = x; else if (-x > mx) mx = -x;
+      if (y > down) down = y; else if (-y > up) up = -y;
+    }
+    return [mx + 1, up + 1, down + 1];
+  }
+  const centreY = () => state.cyan ? YELLOW_ROWS + (H - YELLOW_ROWS) / 2 : H / 2;
+  const halfH = () => state.cyan ? (H - YELLOW_ROWS) / 2 : H / 2;
+  const shownAngle = () => { const a = Math.round(state.angle / state.step) * state.step; return ((a % 360) + 360) % 360; };
+  const need = () => 11 - state.weight;                 // weight 1..10 means 10..1 of the 16 samples must hit
+  const clampSize = (v) => Math.max(16, Math.min(128, v));
+
+  function fitSize(deg, sp = SPIDERS[state.spider]) {
+    const [mx, up, down] = reach(sp, deg);
+    return Math.floor(SPAN * Math.min((W / 2) / mx, halfH() / Math.max(up, down)));
+  }
+  function safeSize(sp = SPIDERS[state.spider]) {
+    return Math.floor(SPAN * Math.min(W / 2, halfH()) / (sp.radius + 1));
+  }
+
+  /* =====================================================================
+     5. THE GLITCH TRANSITION
+     Mixes picture A (old spider) and picture B (new spider) into "out" as u goes from 0 to 1.
+     ===================================================================== */
+  const out = new Uint8Array(W * H), bufA = new Uint8Array(W * H), bufB = new Uint8Array(W * H);
+  function glitch(A, B, u, ms) {
+    // 0 to .35: the old spider tears apart. .35 to .65: both fight in bands. .65 to 1: the new one settles.
+    const src = u < 0.35 ? A : u > 0.65 ? B : null;
+    const heat = u < 0.35 ? u / 0.35 : u > 0.65 ? (1 - u) / 0.35 : 1;
+    for (let y = 0; y < H; y++) {
+      const band = (y >> 2) + (Math.random() * 3 | 0);
+      const from = src || ((band + (ms / 42 | 0)) & 1 ? B : A);
+      const tear = Math.random() < 0.18 * heat ? Math.round((Math.random() - 0.5) * 30 * heat) : 0;
+      const invert = !src && Math.random() < 0.06;
+      for (let x = 0; x < W; x++) {
+        let v = from[y * W + ((x - tear + W) % W)];
+        if (invert) v ^= 1;
+        out[y * W + x] = v;
+      }
+    }
+    // block noise and a rolling bright bar
+    const blocks = Math.round(6 * heat);
+    for (let k = 0; k < blocks; k++) {
+      const bx = Math.random() * W | 0, by = Math.random() * H | 0, bw = 3 + Math.random() * 14 | 0, bh = 1 + Math.random() * 3 | 0;
+      for (let y = by; y < Math.min(H, by + bh); y++)
+        for (let x = bx; x < Math.min(W, bx + bw); x++) out[y * W + x] = Math.random() < 0.5 ? 1 : 0;
+    }
+    if (heat > 0.5) {
+      const ry = (ms / 12 | 0) % H;
+      for (let x = 0; x < W; x++) if ((x + ry) % 3) out[ry * W + x] ^= 1;
+    }
+  }
+
+  /* =====================================================================
+     6. PUTTING THINGS ON THE PAGE
+     ===================================================================== */
+  function draw() {
+    const sp = SPIDERS[state.spider], deg = shownAngle();
+    const lit = render(sp, frame, W, H, W / 2, centreY(), state.size, deg, need());
+    paint($("oled"), frame, state.invert);
+    $("nowName").textContent = sp.name;
+    $("status").textContent = `${deg} deg | ${state.size} px | ${lit} pixels lit`;
+    $("angle").value = deg;
+    $("o_angle").textContent = deg + " deg";
+
+    // Does it fit? Work it out from how far the spider reaches at this angle.
+    const [mx, up, down] = reach(sp, deg), k = state.size / SPAN, cy = centreY();
+    const offScreen = mx * k > W / 2 + 0.5 || cy - up * k < -0.5 || cy + down * k > H + 0.5;
+    const inYellow = cy - up * k < YELLOW_ROWS - 0.5;
+    const el = $("fitState");
+    el.dataset.warn = offScreen || (state.cyan && inYellow);
+    el.textContent = offScreen ? "Part of the spider runs off the screen at this angle. Lower Size or press a fit button."
+      : inYellow ? (state.cyan ? "The spider reaches into the yellow rows at this angle." : "Fits. On a two colour module the top of the spider is in the yellow rows.")
+      : "Fits, and stays in the cyan area.";
+    updateCode();
+  }
+
+  function drawTiles() {
+    document.querySelectorAll("#deck .tile").forEach((tile, i) => {
+      const buf = new Uint8Array(W * H), sp = SPIDERS[i];
+      const [mx, up, down] = reach(sp, 0);
+      const size = Math.floor(SPAN * Math.min((W / 2) / mx, 28 / Math.max(up, down)));
+      render(sp, buf, W, H, W / 2, H / 2, size, 0, need());
+      paint(tile.querySelector("canvas"), buf, false);
+    });
+    markTiles();
+  }
+  function markTiles() {
+    document.querySelectorAll("#deck .tile").forEach((tile, i) => tile.setAttribute("aria-pressed", i === state.spider));
+  }
+
+  /* Make the buttons in a group show which one is active. */
+  function press(selector, attr, value) {
+    document.querySelectorAll(selector).forEach((b) => b.setAttribute("aria-pressed", b.dataset[attr] === String(value)));
+  }
+
+  /* Make every control show the current state. */
+  function syncControls() {
+    $("o_speed").textContent = state.speed + " deg/s";
+    $("o_swing").textContent = "plus or minus " + state.swing + " deg";
+    $("speed").value = state.speed; $("swing").value = state.swing;
+    $("o_size").textContent = state.size + " px"; $("size").value = state.size;
+    $("o_weight").textContent = state.weight <= 4 ? "thin" : state.weight <= 7 ? "normal" : "bold"; $("weight").value = state.weight;
+    $("btnDir").textContent = state.dir > 0 ? "Clockwise" : "Counter clockwise";
+    $("btnCyan").setAttribute("aria-pressed", state.cyan);
+    $("btnInvert").setAttribute("aria-pressed", state.invert);
+    $("btnGrid").setAttribute("aria-pressed", state.grid);
+    $("gridOverlay").hidden = !state.grid;
+    press(".mo", "mo", state.motion); press(".st", "st", state.step); press(".sc", "sc", state.screen);
+    $("btnShow").setAttribute("aria-pressed", state.show);
+    $("btnShow").textContent = state.show ? "Stop glitch show" : "Play glitch show";
+    $("rotCard").inert = state.show;
+    $("o_trSpeed").textContent = `${state.trSpeed}x, ${(GLITCH_MS / state.trSpeed / 1000).toFixed(2)} s`;
+    $("trSpeed").value = state.trSpeed;
+    $("o_hold").textContent = (state.hold / 1000).toFixed(1) + " s"; $("hold").value = state.hold;
+  }
+  function refresh() { syncControls(); draw(); }
+
+  /* The lines to paste into SpiderShow.ino */
+  function settingsCode() {
+    return [
+      "// Paste these over the matching lines near the top of SpiderShow.ino",
+      `const int SPIDER_SIZE  = ${state.size};${" ".repeat(Math.max(1, 6 - String(state.size).length))}// Size`,
+      `const int SPIDER_ANGLE = ${shownAngle()};${" ".repeat(Math.max(1, 6 - String(shownAngle()).length))}// Angle (0 = upright)`,
+      `const int LINE_WEIGHT  = ${state.weight};${" ".repeat(Math.max(1, 6 - String(state.weight).length))}// Line weight, 1 thin to 10 bold`,
+      `const int CENTRE_Y     = ${centreY()};${" ".repeat(Math.max(1, 6 - String(centreY()).length))}// 32 = middle of the screen, 40 = middle of the cyan rows`,
+      `const int HOLD_MS      = ${state.hold};${" ".repeat(Math.max(1, 6 - String(state.hold).length))}// Show each spider for`,
+      `const int GLITCH_MS    = ${Math.round(GLITCH_MS / state.trSpeed)};${" ".repeat(Math.max(1, 6 - String(Math.round(GLITCH_MS / state.trSpeed)).length))}// Transition time. Smaller = faster`,
+    ].join("\n");
+  }
+  function updateCode() { $("codeOut").textContent = settingsCode(); }
+
+  /* The complete sketch: SpiderShow.ino with the current settings written in and the three spider
+     pictures appended as C arrays, so one paste into an empty Arduino sketch is all it takes.
+     SKETCH_SOURCE is the sketch text with its #include line replaced by a marker. */
+  const SKETCH_SOURCE = "// SPIDER SHOW (everything in one file) for an ESP32 + 0.96\" OLED (128 x 64, I2C)\n// Wiring: OLED VCC -> 3V3, GND -> GND, SDA -> G25, SCL -> G26\n//\n// Shows three spider emblems one after another (Curved legs, Angular legs,\n// Long legs) with a glitch effect between them, then starts again.\n// It is the \"Glitch show\" from the preview page spidey-transitions.html.\n//\n// The numbers under \"settings you can change\" are the ones from the preview page.\n// Change a number, upload again, and the board follows.\n// Needs the Adafruit SSD1306 and Adafruit GFX libraries (Library Manager).\n\n#include <Wire.h>\n#include <Adafruit_GFX.h>\n#include <Adafruit_SSD1306.h>\n// The three spider pictures (256 x 256 each) are at the very bottom of this file.\n// These three lines tell the compiler they exist before they are used.\nextern const uint8_t SPIDER_CURVED[8192];\nextern const uint8_t SPIDER_ANGULAR[8192];\nextern const uint8_t SPIDER_LONG[8192];\n\nconst int SDA_PIN = 25;\nconst int SCL_PIN = 26;\n\nconst int SCREEN_W = 128;\nconst int SCREEN_H = 64;\n\n// ----- settings you can change -----\nconst int SPIDER_SIZE  = 48;       // longest side of the spider in screen pixels (\"Size\" on the page)\nconst int SPIDER_ANGLE = 0;        // 0 = upright, 90 = head points right, 180 = upside down (\"Angle\")\nconst int LINE_WEIGHT  = 7;        // 1 = thinnest legs, 10 = boldest (\"Line weight\")\nconst int CENTRE_X     = 64;       // where the middle of the spider sits on the screen\nconst int CENTRE_Y     = 32;       // 32 = middle of the whole screen, 40 = middle of the cyan part\nconst int HOLD_MS      = 1000;     // how long each spider stays on screen (\"Show each spider for\")\nconst int GLITCH_MS    = 720;      // how long one glitch takes. Smaller = faster (\"Transition speed\")\nconst int FRAME_MS     = 42;       // one glitch frame every 42 ms = 24 frames a second, like the page\n\n// ----- facts about the spider pictures in spider_masters.h -----\nconst int MASTER_SIZE  = 256;      // each big picture is 256 x 256\nconst int MASTER_SPAN  = 240;      // the spider's longest side covers 240 of those pixels\nconst int SAMPLES      = 4;        // 4 x 4 = 16 look-ups per screen pixel\nconst int SPIDER_COUNT = 3;\nconst uint8_t* const MASTERS[SPIDER_COUNT] = { SPIDER_CURVED, SPIDER_ANGULAR, SPIDER_LONG };\nconst char* const SPIDER_NAMES[SPIDER_COUNT] = { \"Curved legs\", \"Angular legs\", \"Long legs\" };\n\nAdafruit_SSD1306 display(SCREEN_W, SCREEN_H, &Wire, -1);\nint foundAddr = 0;\n\n// Screen-sized pictures: row by row, 16 bytes per row, leftmost pixel = top bit (same as drawBitmap).\n// Pixel number i = y * 128 + x.\nconst int PIC_BYTES = SCREEN_W * SCREEN_H / 8;   // 1024 bytes per picture\nuint8_t spiderPic[SPIDER_COUNT][PIC_BYTES];      // the three spiders, drawn once at start-up\nuint8_t outPic[PIC_BYTES];                       // what goes on the screen during a glitch\n\nint  current = 0;                  // the spider on screen now\nint  next = 1;                     // the spider the glitch is changing to\nbool glitching = false;\nunsigned long stageStart = 0;      // when this hold or this glitch began\n\n// ---------------------------------------------------------------------\n// Small helpers\n// ---------------------------------------------------------------------\nbool getPixel(const uint8_t* pic, int i) { return pic[i >> 3] & (0x80 >> (i & 7)); }\nvoid setPixel(uint8_t* pic, int i, bool on) {\n  if (on) pic[i >> 3] |= (0x80 >> (i & 7));\n  else    pic[i >> 3] &= ~(0x80 >> (i & 7));\n}\nint   roundLikePage(float v) { return (int)floorf(v + 0.5f); }\nfloat rand01() { return random(0, 10000) / 10000.0f; }          // a random number from 0 to 1\n\n// ---------------------------------------------------------------------\n// Draws one spider into a screen-sized picture, at SPIDER_SIZE and SPIDER_ANGLE.\n// For every screen pixel it looks back into the big picture at the turned spot,\n// takes 16 samples, and lights the pixel when enough of them land on the spider.\n// Returns how many pixels it lit. This is the same maths as the preview page.\n// ---------------------------------------------------------------------\nint renderSpider(const uint8_t* master, uint8_t* pic) {\n  memset(pic, 0, PIC_BYTES);\n  float k = (float)MASTER_SPAN / SPIDER_SIZE;                   // big-picture pixels per screen pixel\n  float rad = SPIDER_ANGLE * PI / 180.0f;\n  float c = cosf(rad), s = sinf(rad);\n  int need = 11 - LINE_WEIGHT;                                  // weight 1..10 -> 10..1 of the 16 samples must hit\n  int lit = 0;\n  for (int y = 0; y < SCREEN_H; y++) {\n    for (int x = 0; x < SCREEN_W; x++) {\n      int hits = 0;\n      for (int j = 0; j < SAMPLES; j++) {\n        float dy = y + (j + 0.5f) / SAMPLES - CENTRE_Y;\n        for (int i = 0; i < SAMPLES; i++) {\n          float dx = x + (i + 0.5f) / SAMPLES - CENTRE_X;\n          int u = (int)floorf(( dx * c + dy * s) * k + MASTER_SIZE / 2);\n          int v = (int)floorf((-dx * s + dy * c) * k + MASTER_SIZE / 2);\n          if (u >= 0 && u < MASTER_SIZE && v >= 0 && v < MASTER_SIZE &&\n              (pgm_read_byte(master + v * (MASTER_SIZE / 8) + (u >> 3)) & (0x80 >> (u & 7)))) hits++;\n        }\n      }\n      if (hits >= need) { setPixel(pic, y * SCREEN_W + x, true); lit++; }\n    }\n  }\n  return lit;\n}\n\n// ---------------------------------------------------------------------\n// The glitch: mixes picture A (old spider) and picture B (new spider) into outPic.\n// u goes from 0 to 1 over the glitch. Same effect as the anime logo deck.\n// ---------------------------------------------------------------------\nvoid glitch(const uint8_t* A, const uint8_t* B, float u, unsigned long t) {\n  // 0-.35 old spider tears apart, .35-.65 both fight in bands, .65-1 new spider settles\n  const uint8_t* src = u < 0.35f ? A : u > 0.65f ? B : nullptr;\n  float heat = u < 0.35f ? u / 0.35f : u > 0.65f ? (1 - u) / 0.35f : 1;\n  for (int y = 0; y < SCREEN_H; y++) {\n    int band = (y >> 2) + (int)(rand01() * 3);\n    const uint8_t* from = src ? src : (((band + (int)(t / 42)) & 1) ? B : A);\n    int tear = rand01() < 0.18f * heat ? roundLikePage((rand01() - 0.5f) * 30 * heat) : 0;\n    bool invert = !src && rand01() < 0.06f;\n    for (int x = 0; x < SCREEN_W; x++) {\n      bool v = getPixel(from, y * SCREEN_W + ((x - tear + SCREEN_W) % SCREEN_W));\n      if (invert) v = !v;\n      setPixel(outPic, y * SCREEN_W + x, v);\n    }\n  }\n  // block noise and a rolling bright bar\n  int blocks = roundLikePage(6 * heat);\n  for (int n = 0; n < blocks; n++) {\n    int bx = (int)(rand01() * SCREEN_W), by = (int)(rand01() * SCREEN_H);\n    int bw = (int)(3 + rand01() * 14), bh = (int)(1 + rand01() * 3);\n    for (int y = by; y < min(SCREEN_H, by + bh); y++)\n      for (int x = bx; x < min(SCREEN_W, bx + bw); x++)\n        setPixel(outPic, y * SCREEN_W + x, rand01() < 0.5f);\n  }\n  if (heat > 0.5f) {\n    int ry = (int)(t / 12) % SCREEN_H;\n    for (int x = 0; x < SCREEN_W; x++)\n      if ((x + ry) % 3) setPixel(outPic, ry * SCREEN_W + x, !getPixel(outPic, ry * SCREEN_W + x));\n  }\n}\n\n// Puts one screen-sized picture on the OLED.\nvoid showPicture(uint8_t* pic) {\n  display.clearDisplay();\n  display.drawBitmap(0, 0, pic, SCREEN_W, SCREEN_H, SSD1306_WHITE);\n  display.display();\n}\n\n// ---------------------------------------------------------------------\n// Setup and loop\n// ---------------------------------------------------------------------\nbool deviceAnswers(int addr) {\n  Wire.beginTransmission(addr);\n  return Wire.endTransmission() == 0;\n}\n\nvoid oledCommand(uint8_t c) {\n  Wire.beginTransmission(foundAddr);\n  Wire.write(0x00);\n  Wire.write(c);\n  Wire.endTransmission();\n}\n\nvoid setup() {\n  Serial.begin(115200);\n  delay(500);\n  Serial.println(\"\\n===== SPIDER SHOW =====\");\n\n  Wire.begin(SDA_PIN, SCL_PIN, 100000);\n  delay(50);\n  for (int tries = 0; tries < 20 && foundAddr == 0; tries++) {   // this board often misses the first probe\n    if (deviceAnswers(0x3C))      foundAddr = 0x3C;\n    else if (deviceAnswers(0x3D)) foundAddr = 0x3D;\n    else delay(30);\n  }\n  if (foundAddr == 0) {\n    Serial.println(\"OLED NOT found on SDA=G25 SCL=G26. Check the 4 wires.\");\n    while (true) delay(1000);\n  }\n  Serial.printf(\"OLED found at 0x%02X\\n\", foundAddr);\n\n  // Wake-up sequence this panel needs before the driver takes over.\n  oledCommand(0xAE);\n  oledCommand(0x8D); oledCommand(0x14);\n  oledCommand(0xAD); oledCommand(0x8B);\n  oledCommand(0xAF);\n  delay(100);\n\n  if (!display.begin(SSD1306_SWITCHCAPVCC, foundAddr)) {\n    Serial.println(\"display.begin() failed.\");\n    while (true) delay(1000);\n  }\n\n  // Draw the three spiders once. After this the loop only swaps and glitches pictures.\n  for (int n = 0; n < SPIDER_COUNT; n++) {\n    int lit = renderSpider(MASTERS[n], spiderPic[n]);\n    Serial.printf(\"%s: %d pixels lit\\n\", SPIDER_NAMES[n], lit);\n  }\n\n  randomSeed(micros());\n  showPicture(spiderPic[current]);\n  stageStart = millis();\n  Serial.println(\"Ready. The show is running.\");\n}\n\nvoid loop() {\n  unsigned long now = millis();\n\n  if (!glitching) {\n    // holding one spider still: wait until its time is up, then start a glitch to the next one\n    if (now - stageStart >= (unsigned long)HOLD_MS) {\n      next = (current + 1) % SPIDER_COUNT;\n      glitching = true;\n      stageStart = now;\n    } else {\n      delay(5);\n    }\n    return;\n  }\n\n  float u = (float)(now - stageStart) / GLITCH_MS;\n  if (u >= 1) {                                                  // glitch finished: the new spider stays\n    current = next;\n    glitching = false;\n    stageStart = now;\n    showPicture(spiderPic[current]);\n    Serial.printf(\"Now showing: %s\\n\", SPIDER_NAMES[current]);\n    return;\n  }\n\n  glitch(spiderPic[current], spiderPic[next], u, now - stageStart);\n  showPicture(outPic);\n\n  unsigned long took = millis() - now;                           // keep the glitch at 24 frames a second\n  if (took < (unsigned long)FRAME_MS) delay(FRAME_MS - took);\n}\n\n__SPIDER_PICTURES__\n";
+  function fullSketch() {
+    let src = SKETCH_SOURCE;
+    const values = { SPIDER_SIZE: state.size, SPIDER_ANGLE: shownAngle(), LINE_WEIGHT: state.weight, CENTRE_Y: centreY(),
+                     HOLD_MS: state.hold, GLITCH_MS: Math.round(GLITCH_MS / state.trSpeed) };
+    for (const [name, value] of Object.entries(values)) {
+      src = src.replace(new RegExp("^(const int " + name + "\\s*=\\s*)-?\\d+;", "m"), "$1" + value + ";");
+    }
+    const names = ["SPIDER_CURVED", "SPIDER_ANGULAR", "SPIDER_LONG"];
+    const arrays = SPIDERS.map((sp, n) => {
+      const lines = [`const uint8_t ${names[n]}[${sp.bits.length}] PROGMEM = {  // ${sp.name}`];
+      for (let r = 0; r < sp.bits.length; r += 32) {
+        let line = "  ";
+        for (let i = r; i < r + 32; i++) line += "0x" + sp.bits[i].toString(16).toUpperCase().padStart(2, "0") + ",";
+        lines.push(line);
+      }
+      lines.push("};");
+      return lines.join("\n");
+    });
+    const pictures = [
+      "// =====================================================================",
+      "// THE THREE SPIDER PICTURES",
+      "// Each one is 256 x 256 pixels, 1 bit per pixel, 32 bytes per row, leftmost pixel = top bit.",
+      "// The spider's longest side covers 240 of the 256 pixels and its middle is the middle of the picture.",
+      "// Made by the Spidey Transitions page from the same data it draws with. Do not edit by hand.",
+      "// =====================================================================",
+      "", arrays.join("\n\n"), "",
+    ].join("\n");
+    return src.replace("__SPIDER_PICTURES__", pictures);
+  }
+
+  /* Copy some text. Falls back to selecting it in the given element when the clipboard is not allowed. */
+  function copyText(text, holder, doneMessage) {
+    const msg = $("copyState");
+    const fallback = () => {
+      holder.hidden = false;
+      if (holder.tagName === "TEXTAREA") { holder.value = text; holder.select(); }
+      else { const range = document.createRange(); range.selectNodeContents(holder); const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range); }
+      msg.textContent = "Copy is blocked here. The code is selected, press Ctrl+C or Cmd+C.";
+    };
+    try { navigator.clipboard.writeText(text).then(() => { msg.textContent = doneMessage; }, fallback); }
+    catch (e) { fallback(); }
+  }
+
+  /* =====================================================================
+     7. THE GLITCH SHOW
+     ===================================================================== */
+  const show = { stage: "hold", since: 0, next: 0, lastFrame: 0 };
+  let base = 0;                       // the angle Swing rocks around
+  let phase = 0;                      // where Swing is in its rock
+
+  function setShow(on) {
+    state.show = on;
+    if (on) {
+      state.motion = "still"; state.step = 1; base = state.angle = SHOW_ANGLE; phase = 0;
+      // keep the chosen size unless it is too big for one of the three spiders to fit upright
+      const fitsAll = Math.min(...SPIDERS.map((sp) => fitSize(SHOW_ANGLE, sp))) - 2;
+      state.size = clampSize(Math.min(state.size, fitsAll));
+      show.stage = "hold"; show.since = 0;
+    }
+    refresh();
+  }
+  function showTick(t) {
+    if (t - show.lastFrame < FRAME_MS) return;
+    show.lastFrame = t;
+    if (!show.since) show.since = t;
+    const elapsed = t - show.since;
+    if (show.stage === "hold") {
+      if (elapsed >= state.hold) { show.next = (state.spider + 1) % SPIDERS.length; show.stage = "trans"; show.since = t; }
+      return;
+    }
+    const dur = GLITCH_MS / state.trSpeed, u = elapsed / dur;
+    if (u >= 1) { state.spider = show.next; show.stage = "hold"; show.since = t; markTiles(); draw(); return; }
+    const cy = centreY(), n = need();
+    render(SPIDERS[state.spider], bufA, W, H, W / 2, cy, state.size, SHOW_ANGLE, n);
+    render(SPIDERS[show.next], bufB, W, H, W / 2, cy, state.size, SHOW_ANGLE, n);
+    glitch(bufA, bufB, u, elapsed);
+    paint($("oled"), out, state.invert);
+    $("nowName").textContent = SPIDERS[state.spider].name + " to " + SPIDERS[show.next].name;
+    $("status").textContent = `glitch | ${(dur / 1000).toFixed(2)} s`;
+  }
+
+  /* =====================================================================
+     8. SCENES: one click set ups
+     ===================================================================== */
+  const SCENES = {
+    show()  { setShow(true); },
+    still() { setShow(false); state.motion = "still"; base = state.angle = 0; state.step = 1; state.size = clampSize(fitSize(0) - 2); refresh(); },
+    spin()  { setShow(false); state.motion = "spin"; state.step = 1; state.speed = 45; state.size = clampSize(safeSize()); refresh(); },
+    swing() { setShow(false); state.motion = "swing"; state.step = 1; state.speed = 60; state.swing = 25; base = state.angle = 0; phase = 0; state.size = clampSize(fitSize(25) - 2); refresh(); },
+    steps() { setShow(false); state.motion = "spin"; state.step = 45; state.speed = 120; state.size = clampSize(safeSize()); refresh(); },
+  };
+
+  /* =====================================================================
+     9. WIRE UP THE CONTROLS
+     ===================================================================== */
+  SPIDERS.forEach((sp, i) => {
+    const b = document.createElement("button");
+    b.className = "tile";
+    b.innerHTML = `<canvas width="${W}" height="${H}"></canvas><span></span>`;
+    b.querySelector("span").textContent = sp.name;
+    b.addEventListener("click", () => {
+      if (state.show) {               // during the show a click glitches straight to that spider
+        if (show.stage === "hold" && i !== state.spider) { show.next = i; show.stage = "trans"; show.since = 0; }
+        return;
+      }
+      state.spider = i; markTiles(); refresh();
+    });
+    $("deck").appendChild(b);
+  });
+  [0, 45, 90, 135, 180, 225, 270, 315].forEach((a) => {
+    const b = document.createElement("button");
+    b.className = "mono"; b.textContent = a + "°";
+    b.addEventListener("click", () => { base = state.angle = a; phase = 0; refresh(); });
+    $("presets").appendChild(b);
+  });
+  document.querySelectorAll(".scene").forEach((b) => b.addEventListener("click", () => SCENES[b.dataset.scene]()));
+
+  $("angle").addEventListener("input", (e) => { base = state.angle = +e.target.value; phase = 0; refresh(); });
+  $("speed").addEventListener("input", (e) => { state.speed = +e.target.value; refresh(); });
+  $("swing").addEventListener("input", (e) => { state.swing = +e.target.value; refresh(); });
+  $("size").addEventListener("input", (e) => { state.size = +e.target.value; refresh(); });
+  $("weight").addEventListener("input", (e) => { state.weight = +e.target.value; drawTiles(); refresh(); });
+  $("btnDir").addEventListener("click", () => { state.dir = -state.dir; refresh(); });
+  $("btnFit").addEventListener("click", () => { state.size = clampSize(fitSize(shownAngle())); refresh(); });
+  $("btnSafe").addEventListener("click", () => { state.size = clampSize(safeSize()); refresh(); });
+  $("btnCyan").addEventListener("click", () => { state.cyan = !state.cyan; refresh(); });
+  $("btnInvert").addEventListener("click", () => { state.invert = !state.invert; refresh(); });
+  $("btnGrid").addEventListener("click", () => { state.grid = !state.grid; syncControls(); });
+  document.querySelectorAll(".mo").forEach((b) => b.addEventListener("click", () => {
+    state.motion = b.dataset.mo; base = shownAngle(); state.angle = base; phase = 0; last = 0; refresh();
+  }));
+  document.querySelectorAll(".st").forEach((b) => b.addEventListener("click", () => { state.step = +b.dataset.st; refresh(); }));
+  document.querySelectorAll(".sc").forEach((b) => b.addEventListener("click", () => { state.screen = b.dataset.sc; drawTiles(); refresh(); }));
+  $("btnShow").addEventListener("click", () => setShow(!state.show));
+  $("trSpeed").addEventListener("input", (e) => { state.trSpeed = +e.target.value; syncControls(); updateCode(); });
+  $("hold").addEventListener("input", (e) => { state.hold = +e.target.value; syncControls(); updateCode(); });
+
+  $("btnCopy").addEventListener("click", () => copyText(settingsCode(), $("codeOut"), "Copied. Paste over the matching lines in SpiderShow.ino."));
+  $("btnCopyAll").addEventListener("click", () => copyText(fullSketch(), $("sketchOut"), "Copied the whole sketch. In the Arduino IDE: File, New Sketch, select all, paste, Upload."));
+
+  /* Page look: white or black. Remembered in this browser only.
+     When the page is shown inside another site (?embed=1&theme=dark) it follows that site instead. */
+  const params = new URLSearchParams(location.search);
+  const embedded = params.has("embed");
+  if (embedded) document.documentElement.dataset.embed = "1";
+  function setTheme(th) {
+    if (th === "dark") document.documentElement.dataset.theme = "dark";
+    else document.documentElement.removeAttribute("data-theme");
+    press(".th", "th", th);
+    if (!embedded) { try { localStorage.setItem("spidey-theme", th); } catch (e) { /* storage may be blocked, that is fine */ } }
+  }
+  document.querySelectorAll(".th").forEach((b) => b.addEventListener("click", () => setTheme(b.dataset.th)));
+  let savedTheme = "light";
+  try { savedTheme = localStorage.getItem("spidey-theme") || "light"; } catch (e) { /* ignore */ }
+  setTheme(params.get("theme") || savedTheme);
+
+  /* Embedded: tell the host page how tall this page is, so its frame can fit without a scrollbar. */
+  if (embedded && window.parent !== window) {
+    const sendHeight = () => window.parent.postMessage({ abkHeight: document.documentElement.scrollHeight }, "*");
+    if (window.ResizeObserver) new ResizeObserver(sendHeight).observe(document.body);
+    window.addEventListener("load", sendHeight);
+    sendHeight();
+  }
+
+  /* =====================================================================
+     10. THE ANIMATION LOOP
+     ===================================================================== */
+  let last = 0;
+  function tick(t) {
+    requestAnimationFrame(tick);
+    if (state.show) { last = 0; showTick(t); return; }
+    if (state.motion === "still") { last = 0; return; }
+    if (!last) { last = t; return; }
+    const dt = Math.min(0.1, (t - last) / 1000);
+    if (dt < 1 / 32) return;                          // about 30 frames a second is plenty
+    last = t;
+    const before = shownAngle();
+    if (state.motion === "spin") state.angle = (state.angle + state.dir * state.speed * dt + 360) % 360;
+    else { phase += dt * state.speed / state.swing; state.angle = base + state.dir * state.swing * Math.sin(phase); }
+    if (shownAngle() !== before) draw();
+  }
+
+  /* Start. The glitch show plays on load unless the visitor asked their system for less motion. */
+  drawTiles();
+  setShow(!matchMedia("(prefers-reduced-motion: reduce)").matches);
+  requestAnimationFrame(tick);
+})();
+</script>
+
+</body>
+</html>

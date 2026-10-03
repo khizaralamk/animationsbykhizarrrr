@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- EYE LAB. One file, works offline. The page (HTML), the look (<style>) and the preview (<script>) are all here. -->
+<!-- Embedded inside another site (?embed=1&theme=dark): hide the header, follow the site theme, report the height. -->
+<script>
+  (() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("theme")) document.documentElement.dataset.theme = params.get("theme");
+    if (!params.has("embed") || window.parent === window) return;
+    document.documentElement.dataset.embed = "1";
+    const sendHeight = () => window.parent.postMessage({ abkHeight: document.documentElement.scrollHeight }, "*");
+    window.addEventListener("load", () => { sendHeight(); if (window.ResizeObserver) new ResizeObserver(sendHeight).observe(document.body); });
+  })();
+</script>
+<style>:root[data-embed] header { display: none; } :root[data-embed] .wrap { padding-block: 12px 28px; }</style>
+<title>Clowdbot Eye Lab</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground: #F2F3EF;
+    --panel: #FFFFFF;
+    --ink: #1C1F22;
+    --muted: #666C72;
+    --line: #D9DCD6;
+    --accent: #2C63D6;
+    --accent-ink: #FFFFFF;
+    --bezel: #0B0C0E;
+    --pixel: #FFFFFF;
+    --pixel-off: #15171A;
+    --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #141618;
+      --panel: #1D2023;
+      --ink: #E6E8E3;
+      --muted: #9AA0A6;
+      --line: #2E3236;
+      --accent: #6C9CFF;
+      --accent-ink: #0F1420;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #141618;
+    --panel: #1D2023;
+    --ink: #E6E8E3;
+    --muted: #9AA0A6;
+    --line: #2E3236;
+    --accent: #6C9CFF;
+    --accent-ink: #0F1420;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.45;
+  }
+  .wrap {
+    max-width: 960px;
+    margin: 0 auto;
+    padding-inline: 16px;
+    padding-block: 28px 48px;
+    display: grid;
+    gap: 22px;
+  }
+  header h1 {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  header p { margin: 0; color: var(--muted); max-width: 62ch; }
+
+  .screen {
+    background: var(--bezel);
+    border-radius: 10px;
+    padding: 18px;
+  }
+  .screen canvas {
+    display: block;
+    width: 100%;
+    max-width: 768px;
+    margin: 0 auto;
+    aspect-ratio: 2 / 1;
+    image-rendering: pixelated;
+    background: #000;
+  }
+  .screen .strip {
+    max-width: 768px;
+    margin: 10px auto 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: #8B9096;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  button {
+    font: inherit;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .spacer { flex: 1; }
+  .actions .label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-right: 4px;
+  }
+  .note { margin: -10px 0 0; color: var(--muted); font-size: 13px; }
+  .status { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  fieldset {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--panel);
+    padding: 14px 16px 6px;
+    margin: 0;
+    min-width: 0;
+  }
+  legend {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0 6px;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 4px;
+    padding-block: 8px;
+    border-top: 1px solid var(--line);
+  }
+  .row:first-of-type { border-top: 0; }
+  .row label { font-weight: 500; }
+  .row small { grid-column: 1 / -1; color: var(--muted); font-size: 12.5px; }
+  .row output {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    min-width: 5ch;
+    text-align: right;
+  }
+  .row input[type="range"] {
+    grid-column: 1 / -1;
+    width: 100%;
+    accent-color: var(--accent);
+  }
+
+  .code {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .code .head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .code .head strong { font-weight: 600; }
+  .code .head span { color: var(--muted); font-size: 13px; }
+  pre {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.5;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    button { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Clowdbot Eye Lab</h1>
+    <p>A pixel-exact preview of the 128 × 64 OLED. The eye on the side you look toward narrows and the other widens, so the glance reads like a head turning. It runs at the real board's frame rate, about 18 frames a second, so what you see here is what the glass will do. Pick an emotion to change the eye shape: happy and joy arch into smiles, love turns the eyes into beating hearts.</p>
+  </header>
+
+  <section class="screen" aria-label="OLED preview">
+    <canvas id="oled" width="128" height="64" aria-label="Simulated 128 by 64 OLED showing two eyes"></canvas>
+    <div class="strip"><span>128 × 64 · I2C 0x3C · SDA G25 · SCL G26</span><span id="fps">18 fps</span></div>
+  </section>
+
+  <div class="actions">
+    <button id="btnAuto" aria-pressed="true">Auto look</button>
+    <button id="btnLeft">Look left</button>
+    <button id="btnCentre">Centre</button>
+    <button id="btnRight">Look right</button>
+    <button id="btnBlink">Blink</button>
+    <span class="spacer"></span>
+    <span class="status" id="status">auto · gaze 0</span>
+  </div>
+
+  <div class="actions" role="group" aria-label="Emotion">
+    <span class="label">Emotion</span>
+    <button class="emo" data-emo="neutral" aria-pressed="true">Neutral</button>
+    <button class="emo" data-emo="happy" aria-pressed="false">Happy</button>
+    <button class="emo" data-emo="joy" aria-pressed="false">Joy</button>
+    <button class="emo" data-emo="love" aria-pressed="false">Love</button>
+    <button class="emo" data-emo="surprised" aria-pressed="false">Surprised</button>
+    <button class="emo" data-emo="sleepy" aria-pressed="false">Sleepy</button>
+    <button class="emo" data-emo="sad" aria-pressed="false">Sad</button>
+    <button class="emo" data-emo="angry" aria-pressed="false">Angry</button>
+  </div>
+  <p class="note">Emotions are preview only for now. OledEyes.ino does not draw them yet, so the board keeps showing neutral eyes until the sketch is updated.</p>
+
+  <div class="grid">
+    <fieldset>
+      <legend>Shape</legend>
+      <div class="row">
+        <label for="EYE_W">Eye width</label><output for="EYE_W" id="o_EYE_W">28</output>
+        <input type="range" id="EYE_W" min="14" max="44" value="24">
+      </div>
+      <div class="row">
+        <label for="EYE_H">Eye height</label><output id="o_EYE_H">46</output>
+        <input type="range" id="EYE_H" min="20" max="62" value="40">
+      </div>
+      <div class="row">
+        <label for="EYE_GAP">Gap between eyes</label><output id="o_EYE_GAP">22</output>
+        <input type="range" id="EYE_GAP" min="6" max="44" value="14">
+      </div>
+      <div class="row">
+        <label for="EYE_RADIUS">Corner radius</label><output id="o_EYE_RADIUS">14</output>
+        <input type="range" id="EYE_RADIUS" min="0" max="22" value="13">
+        <small>Capped at half the eye's current width, so a narrowed eye stays a smooth pill.</small>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Perspective</legend>
+      <div class="row">
+        <label for="LOOK_RANGE">Slide distance</label><output id="o_LOOK_RANGE">14</output>
+        <input type="range" id="LOOK_RANGE" min="0" max="28" value="11">
+        <small>How many pixels both eyes shift toward the gaze.</small>
+      </div>
+      <div class="row">
+        <label for="SQUEEZE_PCT">Near eye squeeze</label><output id="o_SQUEEZE_PCT">45%</output>
+        <input type="range" id="SQUEEZE_PCT" min="0" max="75" value="21">
+        <small>The eye on the gaze side loses this much width at full turn.</small>
+      </div>
+      <div class="row">
+        <label for="STRETCH_PCT">Far eye stretch</label><output id="o_STRETCH_PCT">12%</output>
+        <input type="range" id="STRETCH_PCT" min="0" max="40" value="17">
+        <small>The other eye gains this much width, as it swings toward you.</small>
+      </div>
+      <div class="row">
+        <label for="LEAN_PCT">Near eye lean</label><output id="o_LEAN_PCT">10%</output>
+        <input type="range" id="LEAN_PCT" min="0" max="30" value="17">
+        <small>The near eye also drops a little in height at full turn.</small>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Motion</legend>
+      <div class="row">
+        <label for="EASE_PCT">Glance speed</label><output id="o_EASE_PCT">22%</output>
+        <input type="range" id="EASE_PCT" min="5" max="60" value="60">
+        <small>Each frame closes this share of the remaining distance. Lower is lazier.</small>
+      </div>
+      <div class="row">
+        <label for="BLINK_MS">Blink length</label><output id="o_BLINK_MS">220 ms</output>
+        <input type="range" id="BLINK_MS" min="80" max="500" step="10" value="290">
+      </div>
+      <div class="row">
+        <label for="LOOK_HOLD_MIN">Hold a gaze, min</label><output id="o_LOOK_HOLD_MIN">900 ms</output>
+        <input type="range" id="LOOK_HOLD_MIN" min="200" max="3000" step="50" value="900">
+      </div>
+      <div class="row">
+        <label for="LOOK_HOLD_MAX">Hold a gaze, max</label><output id="o_LOOK_HOLD_MAX">2400 ms</output>
+        <input type="range" id="LOOK_HOLD_MAX" min="500" max="5000" step="50" value="1700">
+      </div>
+      <div class="row">
+        <label for="BLINK_GAP_MIN">Between blinks, min</label><output id="o_BLINK_GAP_MIN">1800 ms</output>
+        <input type="range" id="BLINK_GAP_MIN" min="500" max="6000" step="100" value="1800">
+      </div>
+      <div class="row">
+        <label for="BLINK_GAP_MAX">Between blinks, max</label><output id="o_BLINK_GAP_MAX">4500 ms</output>
+        <input type="range" id="BLINK_GAP_MAX" min="1000" max="9000" step="100" value="4500">
+      </div>
+      <div class="row">
+        <label for="JITTER_PX">Idle jitter</label><output id="o_JITTER_PX">1 px</output>
+        <input type="range" id="JITTER_PX" min="0" max="3" value="2">
+        <small>Tiny random twitches while holding a gaze. Zero switches it off.</small>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Emotion</legend>
+      <div class="row">
+        <label for="SMILE_PCT">Smile depth</label><output id="o_SMILE_PCT">55%</output>
+        <input type="range" id="SMILE_PCT" min="20" max="85" value="55">
+        <small>Happy keeps only the top of the eye as an arch. Higher is a thinner, more squinted smile. Joy is thinner still and bounces.</small>
+      </div>
+      <div class="row">
+        <label for="LID_PCT">Sleepy lid</label><output id="o_LID_PCT">50%</output>
+        <input type="range" id="LID_PCT" min="10" max="80" value="50">
+        <small>How much of the eye the heavy lid covers.</small>
+      </div>
+      <div class="row">
+        <label for="HEART_BEAT_MS">Heartbeat</label><output id="o_HEART_BEAT_MS">900 ms</output>
+        <input type="range" id="HEART_BEAT_MS" min="400" max="2000" step="50" value="900">
+        <small>One beat of the love hearts: thump, thump, rest.</small>
+      </div>
+    </fieldset>
+  </div>
+
+  <section class="code">
+    <div class="head">
+      <strong>Values for the sketch</strong>
+      <span>Paste over the const block at the top of OledEyes.ino.</span>
+      <span class="spacer"></span>
+      <button id="btnCopy">Copy</button>
+    </div>
+    <pre id="constOut"></pre>
+  </section>
+</div>
+
+<script>
+(() => {
+  const W = 128, H = 64;
+  const FRAME_MS = 55;                 // measured: ~30 ms delay + ~25 ms to push a frame over I2C
+
+  const ids = ["EYE_W","EYE_H","EYE_GAP","EYE_RADIUS","LOOK_RANGE","SQUEEZE_PCT","STRETCH_PCT","LEAN_PCT",
+               "EASE_PCT","BLINK_MS","LOOK_HOLD_MIN","LOOK_HOLD_MAX","BLINK_GAP_MIN","BLINK_GAP_MAX","JITTER_PX",
+               "SMILE_PCT","LID_PCT","HEART_BEAT_MS"];
+  const P = {};
+  const units = { BLINK_MS:" ms", LOOK_HOLD_MIN:" ms", LOOK_HOLD_MAX:" ms", BLINK_GAP_MIN:" ms", BLINK_GAP_MAX:" ms",
+                  SQUEEZE_PCT:"%", STRETCH_PCT:"%", LEAN_PCT:"%", EASE_PCT:"%", JITTER_PX:" px",
+                  SMILE_PCT:"%", LID_PCT:"%", HEART_BEAT_MS:" ms" };
+
+  function readParams() {
+    for (const id of ids) {
+      const el = document.getElementById(id);
+      P[id] = Number(el.value);
+      document.getElementById("o_" + id).textContent = el.value + (units[id] || "");
+    }
+    if (P.LOOK_HOLD_MAX < P.LOOK_HOLD_MIN) P.LOOK_HOLD_MAX = P.LOOK_HOLD_MIN;
+    if (P.BLINK_GAP_MAX < P.BLINK_GAP_MIN) P.BLINK_GAP_MAX = P.BLINK_GAP_MIN;
+    writeConsts();
+  }
+
+  function writeConsts() {
+    const lines = [
+      "// ---- Eye shape ----",
+      `const int EYE_W       = ${P.EYE_W};`,
+      `const int EYE_H       = ${P.EYE_H};`,
+      `const int EYE_GAP     = ${P.EYE_GAP};`,
+      `const int EYE_RADIUS  = ${P.EYE_RADIUS};`,
+      "",
+      "// ---- Perspective when looking sideways (percent) ----",
+      `const int LOOK_RANGE  = ${P.LOOK_RANGE};   // pixels both eyes slide`,
+      `const int SQUEEZE_PCT = ${P.SQUEEZE_PCT};   // near eye loses this % of width`,
+      `const int STRETCH_PCT = ${P.STRETCH_PCT};   // far eye gains this % of width`,
+      `const int LEAN_PCT    = ${P.LEAN_PCT};   // near eye loses this % of height`,
+      "",
+      "// ---- Motion ----",
+      `const int EASE_PCT      = ${P.EASE_PCT};   // % of remaining distance moved per frame`,
+      `const int BLINK_MS      = ${P.BLINK_MS};`,
+      `const int LOOK_HOLD_MIN = ${P.LOOK_HOLD_MIN};`,
+      `const int LOOK_HOLD_MAX = ${P.LOOK_HOLD_MAX};`,
+      `const int BLINK_GAP_MIN = ${P.BLINK_GAP_MIN};`,
+      `const int BLINK_GAP_MAX = ${P.BLINK_GAP_MAX};`,
+      `const int JITTER_PX     = ${P.JITTER_PX};`,
+      "",
+      "// ---- Emotions (preview only, OledEyes.ino does not read these yet) ----",
+      `const int SMILE_PCT     = ${P.SMILE_PCT};   // happy: % of eye height cut away under the smile arch`,
+      `const int LID_PCT       = ${P.LID_PCT};   // sleepy: % of eye height hidden by the lid`,
+      `const int HEART_BEAT_MS = ${P.HEART_BEAT_MS};   // love: one heartbeat`,
+    ];
+    document.getElementById("constOut").textContent = lines.join("\n");
+  }
+
+  // ---------- pixel buffer + rounded rect, integer maths like the board ----------
+  const buf = new Uint8Array(W * H);
+  function clear() { buf.fill(0); }
+  function fillRoundRect(x, y, w, h, r, val = 1) {
+    if (w <= 0 || h <= 0) return;
+    const maxR = Math.floor(Math.min(w, h) / 2);
+    if (r > maxR) r = maxR;
+    for (let py = 0; py < h; py++) {
+      for (let px = 0; px < w; px++) {
+        let inside = true;
+        // corner tests
+        const cx = px < r ? r - 1 - px : (px >= w - r ? px - (w - r) : -1);
+        const cy = py < r ? r - 1 - py : (py >= h - r ? py - (h - r) : -1);
+        if (cx >= 0 && cy >= 0) inside = (cx * cx + cy * cy) <= (r * r);
+        if (!inside) continue;
+        const X = x + px, Y = y + py;
+        if (X >= 0 && X < W && Y >= 0 && Y < H) buf[Y * W + X] = val;
+      }
+    }
+  }
+
+  // Smiling eye: draw the pill, then erase the same pill shifted down by `thick` pixels.
+  // What survives is an arch of even thickness that follows the eye's own top curve.
+  function fillSmile(x, y, w, h, r, thick) {
+    const rc = Math.min(r, Math.floor(Math.min(w, h) / 2));   // the radius fillRoundRect will really use
+    const archH = rc + thick;                                  // the arch stands this tall at its edges
+    if (archH < h) y += Math.floor((h - archH) / 2);           // keep the arch centred where the eye was
+    fillRoundRect(x, y, w, h, r);
+    if (h > 4) fillRoundRect(x, y + thick, w, h, r, 0);
+  }
+
+  // Heart of width and height s, centred on (cx, cy): two round lobes on top of a triangle.
+  function fillHeart(cx, cy, s) {
+    if (s < 4) return;
+    const r = s / 4;
+    const top = cy - s / 2, lobeY = top + r, bottom = cy + s / 2;
+    const l1 = cx - r, l2 = cx + r;
+    for (let Y = Math.floor(top); Y <= Math.ceil(bottom); Y++) {
+      for (let X = Math.floor(cx - 2 * r); X <= Math.ceil(cx + 2 * r); X++) {
+        const dy = Y - lobeY;
+        const rr = r * r + r;   // a little slack so the lobe tops are a few pixels wide, not a spike
+        const inLobe = ((X - l1) * (X - l1) + dy * dy <= rr) || ((X - l2) * (X - l2) + dy * dy <= rr);
+        const inTri = Y >= lobeY && Y <= bottom && Math.abs(X - cx) <= 2 * r * (bottom - Y) / (bottom - lobeY);
+        if (!inLobe && !inTri) continue;
+        if (X >= 0 && X < W && Y >= 0 && Y < H) buf[Y * W + X] = 1;
+      }
+    }
+  }
+  // Erase an eyelid over the top of an eye. The lid edge runs from yL pixels down on the
+  // left side to yR pixels down on the right, so a slanted lid gives sad or angry brows.
+  function eraseLid(x, y, w, h, yL, yR) {
+    for (let px = 0; px < w; px++) {
+      const lid = Math.round(w > 1 ? yL + (yR - yL) * px / (w - 1) : yL);
+      for (let py = 0; py < Math.min(lid, h); py++) {
+        const X = x + px, Y = y + py;
+        if (X >= 0 && X < W && Y >= 0 && Y < H) buf[Y * W + X] = 0;
+      }
+    }
+  }
+
+  // ---------- animation state (mirrors the sketch) ----------
+  let gaze = 0, gazeTarget = 0;          // -1 .. +1
+  let openAmt = 1, blinking = false, blinkStart = 0, nextBlinkAt = 0, doubleBlink = false;
+  let nextLookAt = 0, jitterX = 0, jitterY = 0, nextJitterAt = 0;
+  let auto = true, manualUntil = 0;
+  let emotion = "neutral";
+  let t = 0;                              // simulated millis
+
+  const rnd = (a, b) => a + Math.random() * (b - a);
+
+  function step() {
+    t += FRAME_MS;
+
+    // choose a new gaze
+    if (auto && t >= manualUntil && t >= nextLookAt) {
+      const roll = Math.random();
+      if (roll < 0.45) gazeTarget = 0;
+      else if (roll < 0.72) gazeTarget = -1;
+      else if (roll < 0.99) gazeTarget = 1;
+      else gazeTarget = rnd(-0.5, 0.5);
+      nextLookAt = t + rnd(P.LOOK_HOLD_MIN, P.LOOK_HOLD_MAX);
+    }
+    gaze += (gazeTarget - gaze) * (P.EASE_PCT / 100);
+
+    // idle jitter
+    if (t >= nextJitterAt) {
+      jitterX = P.JITTER_PX ? Math.round(rnd(-P.JITTER_PX, P.JITTER_PX)) : 0;
+      jitterY = P.JITTER_PX ? Math.round(rnd(-P.JITTER_PX, P.JITTER_PX)) : 0;
+      nextJitterAt = t + rnd(400, 1100);
+    }
+
+    // blinking
+    if (!blinking && t >= nextBlinkAt) { blinking = true; blinkStart = t; }
+    if (blinking) {
+      const u = (t - blinkStart) / P.BLINK_MS;
+      if (u >= 1) {
+        blinking = false; openAmt = 1;
+        if (!doubleBlink && Math.random() < 0.2) { doubleBlink = true; nextBlinkAt = t + 120; }
+        else { doubleBlink = false; nextBlinkAt = t + rnd(P.BLINK_GAP_MIN, P.BLINK_GAP_MAX); }
+      } else {
+        // ease: fast close, slower open
+        openAmt = u < 0.4 ? 1 - (u / 0.4) : ((u - 0.4) / 0.6);
+        openAmt = Math.max(0, Math.min(1, openAmt));
+      }
+    }
+
+    draw();
+    document.getElementById("status").textContent =
+      (auto && t >= manualUntil ? "auto" : "manual") + " · " + emotion + " · gaze " + gaze.toFixed(2) + (blinking ? " · blink" : "");
+  }
+
+  function draw() {
+    clear();
+    const g = gaze, ag = Math.abs(g);
+    const shift = Math.round(P.LOOK_RANGE * g) + jitterX;
+
+    // widths and heights with perspective
+    const nearW = Math.round(P.EYE_W * (1 - (P.SQUEEZE_PCT / 100) * ag));
+    const farW  = Math.round(P.EYE_W * (1 + (P.STRETCH_PCT / 100) * ag));
+    const nearH = Math.round(P.EYE_H * (1 - (P.LEAN_PCT / 100) * ag));
+    const farH  = P.EYE_H;
+
+    // left eye is "near" when looking left (g < 0)
+    const leftW  = g < 0 ? nearW : farW,  leftH  = g < 0 ? nearH : farH;
+    const rightW = g > 0 ? nearW : farW,  rightH = g > 0 ? nearH : farH;
+
+    const cx = W / 2 + shift;
+    const leftX  = Math.round(cx - P.EYE_GAP / 2 - leftW);
+    const rightX = Math.round(cx + P.EYE_GAP / 2);
+
+    const lh = Math.max(3, Math.round(leftH * openAmt));
+    const rh = Math.max(3, Math.round(rightH * openAmt));
+    const cy = H / 2 + jitterY;
+
+    drawEye(leftX,  Math.round(cy - lh / 2), leftW,  lh, leftH,  -1);
+    drawEye(rightX, Math.round(cy - rh / 2), rightW, rh, rightH, +1);
+    blit();
+  }
+
+  // One eye in the current emotion. x, y, w, h is the blink-scaled box; fullH is the
+  // unblinked height; side is -1 for the left eye and +1 for the right.
+  function drawEye(x, y, w, h, fullH, side) {
+    const cx = x + Math.floor(w / 2), cy = y + Math.floor(h / 2);
+    switch (emotion) {
+      case "happy": {
+        const thick = Math.max(2, Math.round(h * (100 - P.SMILE_PCT) / 100));
+        fillSmile(x, y, w, h, P.EYE_RADIUS, thick);
+        break;
+      }
+      case "joy": {
+        const bounce = Math.round(2 * Math.abs(Math.sin(t * Math.PI / 380)));   // quick little hop
+        const thick = Math.max(2, Math.round(h * (100 - P.SMILE_PCT) / 100 * 0.6));
+        fillSmile(x, y - bounce, w, h, P.EYE_RADIUS, thick);
+        break;
+      }
+      case "love": {
+        // thump, thump, rest. Hearts do not blink.
+        const s = (t % P.HEART_BEAT_MS) / P.HEART_BEAT_MS;
+        const beat = s < 0.2 ? Math.sin(Math.PI * s / 0.2)
+                   : s < 0.5 ? 0.5 * Math.sin(Math.PI * (s - 0.25) / 0.25)
+                   : 0;
+        const base = Math.min(w * 1.15, fullH * 0.85);
+        fillHeart(cx, cy, Math.round(base * (1 + 0.15 * Math.max(0, beat))));
+        break;
+      }
+      case "surprised": {
+        const dw = Math.round(w * 0.3);
+        fillRoundRect(x - Math.floor(dw / 2), y, w + dw, h, 99);   // 99 is capped, so this is a full oval
+        break;
+      }
+      case "sleepy": {
+        fillRoundRect(x, y, w, h, P.EYE_RADIUS);
+        const lid = Math.round(h * P.LID_PCT / 100);
+        eraseLid(x, y, w, h, lid, lid);
+        break;
+      }
+      case "sad": {      // lid slopes down toward the outer corner
+        fillRoundRect(x, y, w, h, P.EYE_RADIUS);
+        const drop = Math.round(h * 0.45);
+        if (side < 0) eraseLid(x, y, w, h, drop, 2); else eraseLid(x, y, w, h, 2, drop);
+        break;
+      }
+      case "angry": {    // lid slopes down toward the inner corner
+        fillRoundRect(x, y, w, h, P.EYE_RADIUS);
+        const drop = Math.round(h * 0.45);
+        if (side < 0) eraseLid(x, y, w, h, 2, drop); else eraseLid(x, y, w, h, drop, 2);
+        break;
+      }
+      default:
+        fillRoundRect(x, y, w, h, P.EYE_RADIUS);
+    }
+  }
+
+  // ---------- canvas ----------
+  const cv = document.getElementById("oled");
+  const ctx = cv.getContext("2d");
+  const img = ctx.createImageData(W, H);
+  function blit() {
+    const d = img.data;
+    for (let i = 0; i < W * H; i++) {
+      const on = buf[i];
+      d[i * 4] = on ? 255 : 0; d[i * 4 + 1] = on ? 255 : 0; d[i * 4 + 2] = on ? 255 : 0; d[i * 4 + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  // ---------- controls ----------
+  for (const id of ids) document.getElementById(id).addEventListener("input", readParams);
+
+  const btnAuto = document.getElementById("btnAuto");
+  btnAuto.addEventListener("click", () => {
+    auto = !auto; btnAuto.setAttribute("aria-pressed", String(auto)); manualUntil = 0;
+  });
+  const manual = (target) => { gazeTarget = target; manualUntil = t + 4000; };
+  document.getElementById("btnLeft").addEventListener("click", () => manual(-1));
+  document.getElementById("btnCentre").addEventListener("click", () => manual(0));
+  document.getElementById("btnRight").addEventListener("click", () => manual(1));
+  document.getElementById("btnBlink").addEventListener("click", () => { blinking = true; blinkStart = t; });
+
+  const emoButtons = Array.from(document.querySelectorAll("button.emo"));
+  for (const b of emoButtons) {
+    b.addEventListener("click", () => {
+      emotion = b.dataset.emo;
+      for (const o of emoButtons) o.setAttribute("aria-pressed", String(o === b));
+    });
+  }
+
+  document.getElementById("btnCopy").addEventListener("click", async (e) => {
+    const text = document.getElementById("constOut").textContent;
+    const b = e.currentTarget;
+    try { await navigator.clipboard.writeText(text); b.textContent = "Copied"; }
+    catch { const r = document.createRange(); r.selectNodeContents(document.getElementById("constOut"));
+            const s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = "Selected, press Ctrl+C"; }
+    setTimeout(() => (b.textContent = "Copy"), 1600);
+  });
+
+  readParams();
+  nextBlinkAt = rnd(P.BLINK_GAP_MIN, P.BLINK_GAP_MAX);
+  draw();
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  setInterval(step, reduce ? FRAME_MS * 2 : FRAME_MS);
+})();
+</script>
+
+</body>
+</html>
