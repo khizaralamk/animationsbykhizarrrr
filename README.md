@@ -19,6 +19,7 @@
 
 | | Name | What it does | Comes with |
 | :---: | --- | --- | --- |
+| <img src="public/animations/the-boogley/thumb.png" width="220" alt="The Boogley"> | **The Boogley** | A dancing character traced from a video, 151 frames at 10 a second. Four styles, any speed. | Page, set up guide, ESP32 sketch with all the frames inside |
 | <img src="public/animations/spidey-transitions/thumb.png" width="220" alt="Spidey Transitions"> | **Spidey Transitions** | Three spider emblems traced into 1 bit pixels. Turn them, spin them, or run the glitch show. | Page, set up guide, ESP32 sketch with your settings filled in, and a [make your own](public/animations/spidey-transitions/make-your-own.md) guide with a starter sketch |
 | <img src="public/animations/eye-lab/thumb.png" width="220" alt="Eye Lab"> | **Eye Lab** | A pair of pill shaped eyes that look around, blink and change emotion. | Page |
 

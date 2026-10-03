@@ -16,6 +16,21 @@
 */
 export const ANIMATIONS = [
   {
+    slug: "the-boogley",
+    title: "The Boogley",
+    blurb: "A dancing character traced from a 15 second video, 151 frames, one every tenth of a second. Pick a style and a speed, then copy the ESP32 sketch with the frames already inside.",
+    added: "2026-10-04",
+    tags: ["dance", "151 frames", "ESP32 sketch"],
+    screen: "128 x 64 OLED, I2C, 0.96 inch",
+    files: [
+      { label: "Download the page", file: "index.html", note: "One HTML file. Works offline." },
+      { label: "Download the sketch", file: "BoogleyDance_OneFile.ino", note: "Arduino sketch, all 151 frames in one file. Filled style." },
+    ],
+    guides: [
+      { title: "How to put it on your board", file: "guide.md" },
+    ],
+  },
+  {
     slug: "spidey-transitions",
     title: "Spidey Transitions",
     blurb: "Three spider emblems traced into 1 bit pixels. Turn them, spin them, or run the glitch show, then copy the ESP32 sketch with your settings already filled in.",
