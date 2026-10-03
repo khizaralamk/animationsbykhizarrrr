@@ -21,7 +21,7 @@ export default function Layout() {
   return (
     <div className="wrap">
       <div className="topbar">
-        <Link to="/" className="wordmark">OLED <b>Animations</b></Link>
+        <Link to="/" className="wordmark">Hi from <b>Khizar!</b></Link>
         <div className="actions">
           <Link className="button" to="/make-your-own">Make your own</Link>
           <a className="button" href={REPO} target="_blank" rel="noopener">GitHub</a>
