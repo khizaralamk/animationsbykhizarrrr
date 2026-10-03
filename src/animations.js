@@ -12,7 +12,7 @@
     tags      short words shown on the card
     screen    what the animation is for
     files     downloads shown on the page. Each is { label, file, note }. "file" is relative to the folder.
-    guide     a markdown file in the folder that explains how to put it on a board (optional)
+    guides    markdown files in the folder shown under the preview. Each is { title, file }. Can be empty.
 */
 export const ANIMATIONS = [
   {
@@ -25,8 +25,13 @@ export const ANIMATIONS = [
     files: [
       { label: "Download the page", file: "index.html", note: "One HTML file. Works offline." },
       { label: "Download the sketch", file: "SpiderShow_OneFile.ino", note: "Arduino sketch, everything in one file." },
+      { label: "Starter sketch", file: "MakeYourOwn/MakeYourOwn.ino", note: "A short glitch slideshow sketch for your own pictures." },
+      { label: "Starter pictures.h", file: "MakeYourOwn/pictures.h", note: "Goes next to the starter sketch. Replace the pictures with yours." },
     ],
-    guide: "guide.md",
+    guides: [
+      { title: "How to put it on your board", file: "guide.md" },
+      { title: "Make your own", file: "make-your-own.md" },
+    ],
   },
   {
     slug: "eye-lab",
@@ -38,7 +43,7 @@ export const ANIMATIONS = [
     files: [
       { label: "Download the page", file: "index.html", note: "One HTML file. Works offline." },
     ],
-    guide: null,
+    guides: [],
   },
 ];
 

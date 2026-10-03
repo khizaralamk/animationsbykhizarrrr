@@ -9,13 +9,13 @@ import NotFound from "./NotFound.jsx";
   shown in a frame so it keeps working exactly as the downloadable file does. The frame opens it with
   ?embed=1 so the file hides its own header and follows the site's White / Black choice, and the file
   reports its height so the frame fits it without a scrollbar. Under it: the downloads and, when the
-  folder has one, the set up guide (a markdown file turned into HTML on the fly).
+  folder has them, the guides (markdown files turned into HTML on the fly).
 */
 export default function AnimationPage() {
   const { slug } = useParams();
   const { theme } = useOutletContext();
   const a = bySlug(slug);
-  const [guideHtml, setGuideHtml] = useState("");
+  const [guides, setGuides] = useState([]);                // [{ title, html }] loaded from the folder's markdown files
   const [frameHeight, setFrameHeight] = useState(900);
   const [copyState, setCopyState] = useState("");       // message next to the Copy HTML button
   const [copyText, setCopyText] = useState("");         // the file text, shown only when the clipboard is blocked
@@ -56,12 +56,14 @@ export default function AnimationPage() {
   }, []);
 
   useEffect(() => {
-    if (!a || !a.guide) { setGuideHtml(""); return; }
+    if (!a || !a.guides || !a.guides.length) { setGuides([]); return; }
     let alive = true;
-    fetch(folderOf(a) + a.guide)
-      .then((r) => (r.ok ? r.text() : ""))
-      .then((md) => { if (alive) setGuideHtml(md ? marked.parse(md) : ""); })
-      .catch(() => { if (alive) setGuideHtml(""); });
+    Promise.all(a.guides.map((g) =>
+      fetch(folderOf(a) + g.file)
+        .then((r) => (r.ok ? r.text() : ""))
+        .then((md) => ({ title: g.title, html: md ? marked.parse(md) : "" }))
+        .catch(() => ({ title: g.title, html: "" }))
+    )).then((list) => { if (alive) setGuides(list.filter((g) => g.html)); });
     return () => { alive = false; };
   }, [a]);
 
@@ -99,12 +101,12 @@ export default function AnimationPage() {
         />
       </section>
 
-      {guideHtml && (
-        <section className="guide" aria-labelledby="guide-head">
-          <h2 id="guide-head">How to put it on your board</h2>
-          <div className="prose" dangerouslySetInnerHTML={{ __html: guideHtml }} />
+      {guides.map((g) => (
+        <section className="guide" key={g.title}>
+          <h2>{g.title}</h2>
+          <div className="prose" dangerouslySetInnerHTML={{ __html: g.html }} />
         </section>
-      )}
+      ))}
     </>
   );
 }

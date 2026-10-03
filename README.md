@@ -19,7 +19,7 @@
 
 | | Name | What it does | Comes with |
 | :---: | --- | --- | --- |
-| <img src="public/animations/spidey-transitions/thumb.png" width="220" alt="Spidey Transitions"> | **Spidey Transitions** | Three spider emblems traced into 1 bit pixels. Turn them, spin them, or run the glitch show. | Page, set up guide, ESP32 sketch with your settings filled in |
+| <img src="public/animations/spidey-transitions/thumb.png" width="220" alt="Spidey Transitions"> | **Spidey Transitions** | Three spider emblems traced into 1 bit pixels. Turn them, spin them, or run the glitch show. | Page, set up guide, ESP32 sketch with your settings filled in, and a [make your own](public/animations/spidey-transitions/make-your-own.md) guide with a starter sketch |
 | <img src="public/animations/eye-lab/thumb.png" width="220" alt="Eye Lab"> | **Eye Lab** | A pair of pill shaped eyes that look around, blink and change emotion. | Page |
 
 Every animation is **one HTML file**. It runs in your browser on a simulated 0.96 inch OLED at the board's own frame rate, so what you see is what the glass will show. Download it, keep it, open it offline.
@@ -81,7 +81,7 @@ The site shows each animation in a frame opened with `?embed=1`, so the file hid
   tags: ["bounce", "ESP32 sketch"],
   screen: "128 x 64 OLED, I2C, 0.96 inch",
   files: [{ label: "Download the page", file: "index.html", note: "One HTML file." }],
-  guide: "guide.md",
+  guides: [{ title: "How to put it on your board", file: "guide.md" }],
 }
 ```
 
