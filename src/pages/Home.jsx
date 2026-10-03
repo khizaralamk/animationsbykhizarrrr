@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { newestFirst } from "../animations.js";
 import AnimationCard from "../components/AnimationCard.jsx";
 
@@ -8,7 +9,7 @@ export default function Home() {
     <>
       <header className="hero compact">
         <h1>Recently added</h1>
-        <p className="lead">Try each one in your browser, then download the file. If it comes with a sketch, upload that to your board.</p>
+        <p className="lead">Try each one in your browser, then download the file. If it comes with a sketch, upload that to your board. Want one with your own pictures? <Link to="/make-your-own">Make your own</Link>.</p>
       </header>
 
       <section aria-label="Animations">

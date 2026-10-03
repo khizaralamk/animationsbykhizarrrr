@@ -23,7 +23,7 @@ That is all there is to it. The rest of this guide is the exact clicks.
 - The free **Arduino IDE**
 - 2 or more images you like. Simple black and white logos work best.
 
-If you have never set up the board before, do steps 1 and 2 of `guide.md` in this folder first (wiring and installing the Arduino IDE). Then come back here.
+If you have never set up the board before, do steps 1 and 2 of the Spidey Transitions set up guide first (wiring and installing the Arduino IDE). Then come back here.
 
 ## Step 1: pick good images
 
@@ -64,9 +64,9 @@ Do this once per image. Give each one a different name (the word after `epd_bitm
 
 ## Step 3: put your pictures in the starter sketch
 
-This folder has a ready sketch: `MakeYourOwn/`. It already works with three spider pictures, so you can upload it first to see it run.
+There is a ready starter sketch called MakeYourOwn. It is two files, `MakeYourOwn.ino` and `pictures.h`, and both must sit in one folder named `MakeYourOwn`. It already works with three spider pictures, so you can upload it first to see it run.
 
-1. Open `MakeYourOwn/MakeYourOwn.ino` in the Arduino IDE. You will see two tabs: `MakeYourOwn.ino` and `pictures.h`.
+1. Open `MakeYourOwn.ino` in the Arduino IDE. You will see two tabs: `MakeYourOwn.ino` and `pictures.h`.
 2. Click the `pictures.h` tab.
 3. Delete the three example pictures and paste your own arrays from image2cpp in their place.
 4. At the bottom of `pictures.h`, list your picture names in the order you want them shown:
@@ -116,7 +116,7 @@ Shifting a row sideways is one line: instead of reading pixel `x`, read pixel `x
 
 ## How the original was made
 
-The Spidey Transitions page in this folder was built with an AI coding assistant (Claude Code). I gave it three spider images and described what I wanted. It wrote a script that traced the images into pixels, a web page that previews the result at the real screen size, and the ESP32 sketch. The preview page and the board use the same maths, so what shows in the browser is what shows on the glass.
+The Spidey Transitions page was built with an AI coding assistant (Claude Code). I gave it three spider images and described what I wanted. It wrote a script that traced the images into pixels, a web page that previews the result at the real screen size, and the ESP32 sketch. The preview page and the board use the same maths, so what shows in the browser is what shows on the glass.
 
 You do not need any of that to make your own. image2cpp plus the starter sketch gets you the same result. The page just makes it faster to try sizes, angles and speeds before uploading.
 

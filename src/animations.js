@@ -30,7 +30,6 @@ export const ANIMATIONS = [
     ],
     guides: [
       { title: "How to put it on your board", file: "guide.md" },
-      { title: "Make your own", file: "make-your-own.md" },
     ],
   },
   {

@@ -49,6 +49,7 @@ animationsbykhizar/
 │  ├─ pages/
 │  │  ├─ Home.jsx             cards, newest first
 │  │  ├─ AnimationPage.jsx    live preview, downloads, Copy HTML, guide
+│  │  ├─ MakeYourOwn.jsx      the make your own guide, with the starter sketch
 │  │  └─ NotFound.jsx
 │  ├─ components/
 │  │  ├─ Layout.jsx           top bar, White / Black switch, footer

@@ -23,6 +23,7 @@ export default function Layout() {
       <div className="topbar">
         <Link to="/" className="wordmark">OLED <b>Animations</b></Link>
         <div className="actions">
+          <Link className="button" to="/make-your-own">Make your own</Link>
           <a className="button" href={REPO} target="_blank" rel="noopener">GitHub</a>
           <span className="label">Page</span>
           <button aria-pressed={theme === "light"} onClick={() => setTheme("light")}>White</button>
