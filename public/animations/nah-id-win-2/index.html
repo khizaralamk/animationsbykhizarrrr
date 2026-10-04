@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nah, I'd Win 2</title>
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAApklEQVR42mO08lrBQEvAxEBjgGLB0a3hR7eGYyoiVZyuPmDB6i4GBgZr75V4xHE5HFPvQPiAGH/gUj8AccAIyQcEEwNJgK5xwIick2nhD3qloiEcB0xwOzGT/NAoTVFyMi+vIFUM1bObMUD1wagFA5+KXpxaRxVD3UpeDYIaDReQMAsiycf0rQ8gYFePGFVCfyDi4NKhDAYGBgmzIVUWseCyecjkZAD37jw57HfGuwAAAABJRU5ErkJggg==">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 40px 16px 64px;
+    background: #0b0b0c;
+    color: #e8e6e1;
+    font-family: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  main { max-width: 680px; margin: 0 auto; }
+  h1 { margin: 0 0 4px; font-size: 22px; font-weight: 700; letter-spacing: 0.02em; }
+  h1 { display: flex; align-items: center; gap: 12px; }
+  .logo { width: 32px; height: 32px; border-radius: 4px; image-rendering: pixelated; image-rendering: crisp-edges; }
+  .meta { margin: 0 0 28px; color: #8c8a85; }
+
+  .stage { display: flex; justify-content: center; margin-bottom: 24px; }
+  .oled {
+    padding: 14px;
+    background: #000;
+    border: 1px solid #2a2a2e;
+    border-radius: 8px;
+    line-height: 0;
+    max-width: 100%;
+  }
+  canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 20px 28px; justify-content: center; margin-bottom: 36px; }
+  .group { display: flex; }
+  button {
+    font: inherit;
+    color: #e8e6e1;
+    background: #17171a;
+    border: 1px solid #34343a;
+    padding: 7px 14px;
+    cursor: pointer;
+  }
+  .group button + button { border-left: 0; }
+  .group button:first-child { border-radius: 6px 0 0 6px; }
+  .group button:last-child { border-radius: 0 6px 6px 0; }
+  .group button:only-child { border-radius: 6px; }
+  button:hover { background: #222226; }
+  button:focus-visible { outline: 2px solid #e8e6e1; outline-offset: 2px; }
+  button[aria-pressed="true"] { background: #e8e6e1; color: #0b0b0c; border-color: #e8e6e1; }
+
+  .code-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  h2 { margin: 0; font-size: 14px; font-weight: 700; }
+  #copy { border-radius: 6px; }
+  .code-wrap {
+    background: #121214;
+    border: 1px solid #2a2a2e;
+    border-radius: 8px;
+    max-height: 280px;
+    overflow: auto;
+  }
+  pre { margin: 0; padding: 14px; font-size: 12px; color: #b9b7b1; }
+</style>
+<!-- Shown inside another site (?embed=1): report the page height so the frame fits, and use the site's cursor. -->
+<script>
+  (() => {
+    const params = new URLSearchParams(location.search);
+    if (!params.has("embed") || window.parent === window) return;
+    document.documentElement.dataset.embed = "1";
+    document.documentElement.dataset.theme = "dark";      // this page is always dark, so it takes the cursor made for dark pages
+    const sendHeight = () => window.parent.postMessage({ abkHeight: document.documentElement.scrollHeight }, "*");
+    window.addEventListener("load", () => { sendHeight(); if (window.ResizeObserver) new ResizeObserver(sendHeight).observe(document.body); });
+  })();
+</script>
+<style>
+  :root[data-embed] body { padding-top: 20px; padding-bottom: 28px; }
+  /* Embedded: use the host site's pixel cursor (page coloured arrow with an edge in the opposite colour). */
+  :root[data-embed], :root[data-embed] * { cursor: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2236%22 height=%2254%22 shape-rendering=%22crispEdges%22%3E%3Cpath fill=%22%23121315%22 d=%22M0 0h3v3h-3zM0 3h6v3h-6zM0 6h3v3h-3zM6 6h3v3h-3zM0 9h3v3h-3zM9 9h3v3h-3zM0 12h3v3h-3zM12 12h3v3h-3zM0 15h3v3h-3zM15 15h3v3h-3zM0 18h3v3h-3zM18 18h3v3h-3zM0 21h3v3h-3zM21 21h3v3h-3zM0 24h3v3h-3zM24 24h3v3h-3zM0 27h3v3h-3zM27 27h3v3h-3zM0 30h3v3h-3zM30 30h3v3h-3zM0 33h3v3h-3zM21 33h15v3h-15zM0 36h3v3h-3zM12 36h3v3h-3zM21 36h3v3h-3zM0 39h3v3h-3zM9 39h3v3h-3zM15 39h3v3h-3zM24 39h3v3h-3zM0 42h3v3h-3zM6 42h3v3h-3zM15 42h3v3h-3zM24 42h3v3h-3zM0 45h6v3h-6zM18 45h3v3h-3zM27 45h3v3h-3zM0 48h3v3h-3zM18 48h3v3h-3zM27 48h3v3h-3zM21 51h6v3h-6z%22/%3E%3Cpath fill=%22%23FFFFFF%22 d=%22M3 6h3v3h-3zM3 9h6v3h-6zM3 12h9v3h-9zM3 15h12v3h-12zM3 18h15v3h-15zM3 21h18v3h-18zM3 24h21v3h-21zM3 27h24v3h-24zM3 30h27v3h-27zM3 33h18v3h-18zM3 36h9v3h-9zM15 36h6v3h-6zM3 39h6v3h-6zM18 39h6v3h-6zM3 42h3v3h-3zM18 42h6v3h-6zM21 45h6v3h-6zM21 48h6v3h-6z%22/%3E%3C/svg%3E") 0 0, auto; }
+  :root[data-embed][data-theme="dark"], :root[data-embed][data-theme="dark"] * { cursor: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2236%22 height=%2254%22 shape-rendering=%22crispEdges%22%3E%3Cpath fill=%22%23F1F2EE%22 d=%22M0 0h3v3h-3zM0 3h6v3h-6zM0 6h3v3h-3zM6 6h3v3h-3zM0 9h3v3h-3zM9 9h3v3h-3zM0 12h3v3h-3zM12 12h3v3h-3zM0 15h3v3h-3zM15 15h3v3h-3zM0 18h3v3h-3zM18 18h3v3h-3zM0 21h3v3h-3zM21 21h3v3h-3zM0 24h3v3h-3zM24 24h3v3h-3zM0 27h3v3h-3zM27 27h3v3h-3zM0 30h3v3h-3zM30 30h3v3h-3zM0 33h3v3h-3zM21 33h15v3h-15zM0 36h3v3h-3zM12 36h3v3h-3zM21 36h3v3h-3zM0 39h3v3h-3zM9 39h3v3h-3zM15 39h3v3h-3zM24 39h3v3h-3zM0 42h3v3h-3zM6 42h3v3h-3zM15 42h3v3h-3zM24 42h3v3h-3zM0 45h6v3h-6zM18 45h3v3h-3zM27 45h3v3h-3zM0 48h3v3h-3zM18 48h3v3h-3zM27 48h3v3h-3zM21 51h6v3h-6z%22/%3E%3Cpath fill=%22%230E0F11%22 d=%22M3 6h3v3h-3zM3 9h6v3h-6zM3 12h9v3h-9zM3 15h12v3h-12zM3 18h15v3h-15zM3 21h18v3h-18zM3 24h21v3h-21zM3 27h24v3h-24zM3 30h27v3h-27zM3 33h18v3h-18zM3 36h9v3h-9zM15 36h6v3h-6zM3 39h6v3h-6zM18 39h6v3h-6zM3 42h3v3h-3zM18 42h6v3h-6zM21 45h6v3h-6zM21 48h6v3h-6z%22/%3E%3C/svg%3E") 0 0, auto; }
+</style>
+</head>
+<body>
+<main>
+  <h1><img class="logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAApklEQVR42mO08lrBQEvAxEBjgGLB0a3hR7eGYyoiVZyuPmDB6i4GBgZr75V4xHE5HFPvQPiAGH/gUj8AccAIyQcEEwNJgK5xwIick2nhD3qloiEcB0xwOzGT/NAoTVFyMi+vIFUM1bObMUD1wagFA5+KXpxaRxVD3UpeDYIaDReQMAsiycf0rQ8gYFePGFVCfyDi4NKhDAYGBgmzIVUWseCyecjkZAD37jw57HfGuwAAAABJRU5ErkJggg==" alt="">Nah, I'd Win 2</h1>
+  <p class="meta" id="meta"></p>
+
+  <div class="stage">
+    <div class="oled"><canvas id="screen"></canvas></div>
+  </div>
+
+  <div class="controls">
+    <div class="group" role="group" aria-label="Layout">
+      <button type="button" data-view="fitted">Fitted</button>
+      <button type="button" data-view="original">Original</button>
+    </div>
+    <div class="group" role="group" aria-label="Drawing style">
+      <button type="button" data-style="fill">Fill</button>
+      <button type="button" data-style="line">Line</button>
+    </div>
+  </div>
+
+  <div class="code-head">
+    <h2>Arduino bitmap</h2>
+    <button type="button" id="copy">Copy</button>
+  </div>
+  <div class="code-wrap"><pre id="code"></pre></div>
+</main>
+
+<script>
+// Traced from the source drawing, one character per OLED pixel:
+//   .  empty
+//   h  head line work (hair spikes, face)     b  solid black (blindfold, collar)
+//   m  small details (mouth, ear)             i  white inside the head
+//   r  rim around the solid black, so it shows on a black screen (Fill style only)
+//   o  bubble outline                         j  white inside the bubble
+//   1  NAH,          2  I'D          3  WIN.
+// "fitted" makes the head and the bubble each as big as the screen allows.
+// "original" keeps the exact arrangement of the drawing at one scale.
+const TRACE = {
+  fitted: {
+    w: 128, h: 64,
+    rows: [
+      "..........................................................................................oooooooooooooooooo....................",
+      "..............................h.........h.............................................ooooooooojjjjjjoooooooooooooo.............",
+      "..............................hh........hh...........................................oojjjjjjjjjjjjjjjjjjjjjjjjoooooo...........",
+      "..............................hh........hh...........................................ojjjjjjjjjjjjjjjjjjjjjjjjjjjjjjoo..........",
+      "...................hh.........hhh.......hhh.........................................oojjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjoo.........",
+      "....................hhh.......hhhh......hhh.........................................ojjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjoo........",
+      "....................hhhh......hhihh.....hhhh.......................................oojjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjoo........",
+      ".....................hhhh.....hhihh.....hhhh..........h............................ojjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjoo......",
+      ".....................hhihh....hhiihh....hhihh.........h...........................oojjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjoo......",
+      ".........h...........hhiihh...hhiiihh...hhihh........hh...........................ojjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjoo.....",
+      ".........hhhh.........hhiihhh..hiiiihh..hhiihh.......hh..........................oojjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjo.....",
+      ".........hhhhhh.......hhiiihhh.hhiiihhh.hhiihh......hhh..........................ojjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjoo....",
+      "..........hhihhhh......hhiiihhhhhiiiihh.hhiiihh.....hhh.........................oojjjjjjjjjjjjj11jjjjjjjjjjjjjjjjjjjjjjjjjoo....",
+      "..........hhiiihhhhhh..hhiiiiihhhiiiiihhhhiiihh....hhhh.........................ojjjjjjjjjjjjj111jjj1jjjjjjjjjjjjjjjjjjjjjjoo...",
+      "...........hhiiiiihhhhhhhhiiiiihhiiiiiihhhiiiihh...hhhh........................oojjjjjjjjjjjjj11jjj111jjjjjjjjjjjjjjjjjjjjjjo...",
+      "............hhiiiiiiiihhhhhiiiiihiiiiiiihhiiiihh..hhihh........................ojjjjjjjjjjjjj111jjj11jjjjjjjjjjjjjjjjjjjjjjjoo..",
+      "............hhiiiiiiiiiiihhiiiiiiiiiiiiiiiiiiiihh.hhihh.......................oojjjjjjjjjjjjj111jjj11jjjjjjjjjjjjjjjjjjjjjjjoo..",
+      ".hhhhhh......hhiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiihh.hiihh.......................ojjjjjjjjjjjjj1111jj11jjjjj11jjjjjjjjjjjjjjjjjjo..",
+      "..hhhhhhhhhhhhhhiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiihhhiihh......................oojjjjjjjjjjjj11j11jj11jjjj111jjjjjjjjjjjjjjjjjjoo.",
+      "...hhhiihhhhhhhhhiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiihhiiiih.....................oojjjjjjjjjjjj11jj11j11jjjj111jjjj11jjjjjjjjjjjjjoo.",
+      "....hhhiiiiiiihhhiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiihiiiih.....................oojjjjjjjjjjjjjjjj1111jjj11111jjjj11jjj1jjjjjjjjjoo.",
+      ".....hhhiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiih.....................ojjjjjjjjjjjjjjjjjj11jj1111j11jjj11jjj11jjjjjjjjjjo.",
+      ".......hhiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiih....................oojjjjjjjjjjjjjjjjjjjjj11111111jj11jjjj11jjjjjjjjjjo.",
+      "........hhhiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiihhhhhhhh.............oojjjjjjjjjjjjjjjjjjjjjjjjjj111jj11jjj11jjjjjjjjjjjoo",
+      ".hhh.....hhhiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiihhhhhhhhh...........oojjjjjjjjjjjjjjj2222jjjjjjjjj1jj1111111jjjjjjjjjjjjoo",
+      ".hhhhhhhhhhhhiiiiiiiiiiiiiibbbbbbbbbbbiiiiiiiiiiiiiiiiiiiiiihh............oojjjjjjjjjjjjjjj2222222jjjjjjjj11jjj111jjjjjjjjjjjjoo",
+      "..hhhhiihiiiiiiiiiiiiibbbbbbbbbbbbbbbbbbbbbiiiiiiiiiiiiiiiihh.............ojjjjjjjjjjjjjjjjjj222222j22jjjj1jjjj11jjjjjjjjjjjjjjo",
+      "....hhhiiiiiiiiiiibbbbbbbbbbbbbbbbbbbbbbbbbbbbbiiiiiiiiiiihh.............oojjjjjjjjjjjjjjjjjj22jjjj22jjjjjjjjj11jjjjjjjjjjjjjjjo",
+      ".....hhhiiiiiiiibbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbiiiiiiihh..............ojjjjjjjjjjjjjjjjjj22jjjj2jjjjjjjjjjjjjjjj1jjjjjjjjjjjo",
+      ".......hhhiiiibbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbiiihh..............oojjjjjjjjjjjjjjjjj22jjjjjjjjj22222jjjjjjj11jjjjjjjjjjjo",
+      ".........hhbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbhh..............oojjjjjjjjjjjjj2jj22jjjjjjjjjj2222222jjjj11jjjjjjjjjjjoo",
+      "......hhhhbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbr...............ojjjjjjjjjjjjjj22222jjjjjjjjj22jjj222jjjj1jjjjjjjjjjjjo.",
+      ".......hhhbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbr..............oojjjjjjjjjjjjjjjjjj222jjjjjjj22jjjj22jjjjjjjjjjjjjjjjoo.",
+      ".........rbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbr..............ojjjjjjjjjjjj3jjjjjjjjjjjjjjj22jjjj22jjjjjjjjjjjjjjjjjo..",
+      ".........rbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbr.............oojjjjjjjjjjj333jjjjjjjjjjjjj22jjj222jjjjjjjjjjjjjjjjjoo..",
+      ".........rbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbr.............oojjjjjjjjjjj33jjjjj3jjjjjjj2222222jjjjjjjjjjjjjjjjjjjo...",
+      ".........rbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbr.............ojjjjjjjjjjjj33jjjjj33jjjjjjj222jjjjjjjjjjjjjjjjjjjjjoo...",
+      "........hhbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbr............oojjjjjjjjjjj33j333j33jjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjo....",
+      ".......hhhmibbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbr............oojjjjjjjjjj33j333jj33j333333jjjjjjjjjjjjjjjjjjjjjjjjoo....",
+      ".......hhimmmrbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbrr............ojjjjjjjjjj3333333j33jjj3333333jjjjjjjjjjjjjjjjjjjjjjoo....",
+      ".......hhiiimmibbbbbbbbbbbiibbbbbbbbbbbbbbbbbbbbbbbbbbbr.............ojjjjjjjjjj333jj3333jjjjj33jj33j3jjjjjjjjjjjjjjjjjjjjo.....",
+      ".......hhiimmmmibiiiiiiiiiiiiiiiiiiiiiibbbbbbbbbbbbbbbbr.............oojjjjjjjjjjjjjj333jjjjjj33jjjjj33jjjjjjjjjjjjjjjjjjoo.....",
+      "........hhimmimiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiibbbbbbbbbrr.............oojjjjjjjjjjjjj33jjjjjj33jjjjj333jjj33jjjjjjjjjjjjjo......",
+      "........hhhimmmiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiibbbbbbr.............oojjjjjjjjjjjjjjjjjjjj33jjjjjj33jjj333jjjjjjjjjjjjoo......",
+      "..........hhhiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiihh..............oojjjjjjjjjjjjjjj33333jjjjjj333jjj33jjjjjjjjjjjjjo.......",
+      "........rrrhbbiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiihh.............ooojjjjjjjjjjjjjjj333333jjj3333jj33jjjjjjjjjjjjjoo.......",
+      "........rbbbbbbbiiiiiiiiiiiiiiiiiiiiimiiiiiiiiiiiiiiiiiiihh............oooojjjjjjjjjjjjjjjjjjj3jj33j33jj33jjjjjjjjjjjjjo........",
+      "........hbbbbbbbbbiiiiiiiiiiiiiiiiiiimmmmmmiiiiiiiiiiiiiihh.............o.oojjjjjjjjjjjjjjjjjjjjj3jj33j33jjjjjjjjjjjjjoo........",
+      "........rbbbbbbbbbbbiiiiiiiiiiiiiiiiiimiimmmmiiiiiiiiiiiiih................oojjjjjjjjjjjjjjjjjjjjjjj3333jjjjjjjjjjjjjjoo........",
+      "........rrbbbbbbbbbbbbbiiiiiiiiiiiiiiimmimmmiiiiiiiiiiiiiih.................oojjjjjjjjjjjjjjjjjjjjjjj33jjjjjjjjjjjjjjjo.........",
+      ".........rbbbbbbbbbbbbbbbbbiiiiiiiiiiiimmmiiiiiiiiiiiiiiihh..................oojjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjoo.........",
+      ".........rbbbbbbbbbbbbbbbbbbbbbbrriiiiiiiiiiiiiiiiiiiiihhh....................oojjjjjjjjjjjjjjjjjjjjjjjjj33jjjjjjjjjjo..........",
+      ".........rrbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbiiiiibbhhrr....................ojjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjoo..........",
+      "..........rbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbr.....................ojjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjo...........",
+      "..........rbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbh......................ojjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjoo...........",
+      "..........rrrrrrrbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbr......................ojjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjoo............",
+      "................rrrrrbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbrr.....................ojjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjoo.............",
+      "....................rrrrrrbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbr.....................oojjjjjjjjjjjjjjjjjjjjjjjjjjjjjjooo..............",
+      ".........................rrrrrrbbbbbbbbbbbbbbbbbbbbbbbbbrr.....................ojjjjjjjjjjjjjjjjjjjjjjjjjjjjjooo................",
+      "..............................rrrrrbbbbbbbbbbbbbbbbbbbbrr.....................ojjjjjjjjoojjjjjjjjjjjjjjjjjjjooo.................",
+      "..................................rrrrrrbbbbbbbbbbbbbbrr.....................ojjjjjooooooooojjjjjjjjjjjjjjooo...................",
+      ".......................................rrrbbbbbbbbbbbrr......................ojjjooo......ooooojjjjjjjjjjoo.....................",
+      ".........................................rrrrbbbbbbbrr......................ooooo............ooooooooojooo......................",
+      "............................................rrrrrrrrr.......................o.....................oooooo........................"
+    ]
+  },
+  original: {
+    w: 128, h: 64,
+    rows: [
+      "................................................................................................................................",
+      "................................................................................oooooooooooooooo................................",
+      "................................................................................ojjjjjjjjjjjjjjooooo............................",
+      "...............................................................................ojjjjjjjjjjjjjjjjjjjo............................",
+      "...............................................................................ojjjjjjjjjjjjjjjjjjjjo...........................",
+      "..............................................................................ojjjjjjjjjjjjjjjjjjjjjjo..........................",
+      "..............................................................................ojjjjjjjjjjjjjjjjjjjjjjjo.........................",
+      ".............................................................................ojjjjjjjjjjjjjjjjjjjjjjjjo.........................",
+      "............................................................................oojjjjjjjjjjjjjjjjjjjjjjjjjo........................",
+      "............................................................................ojjjjjjjj11jj1jjjjjjjjjjjjjo........................",
+      "...........................................................................oojjjjjjjj11j11jjjjjjjjjjjjjjo.......................",
+      "...........................................................................ojjjjjjjj11jj1jjjjjjjjjjjjjjjo.......................",
+      "............................................h.......hh....................oojjjjjjj111jj1jjj1jjjjjjjjjjjoo......................",
+      "............................................hh......hh....................ojjjjjjjj1j111jj111jj1jjjjjjjjjo......................",
+      "...................................hh.......hhh.....hhh...................ojjjjjjjjjjj1j11111j11jj1jjjjjjo......................",
+      "....................................hh......hhhh....hhh..................ojjjjjjjjjjjjjj1111jj1jj11jjjjjjo......................",
+      "....................................hhh.....hhih....hhhh.................ojjjjjjjjj222jjjjj1j11111jjjjjjjo......................",
+      "....................................hhhhh...hhihh...hhih........h.......ojjjjjjjjjjj2222j2jj1jjj1jjjjjjjjoo.....................",
+      "..........................hh.........hhihh..hhiihh..hhihh......hh.......ojjjjjjjjjjj2jjj2jjjjjj1jjjjjjjjjjo.....................",
+      "..........................hhhh.......hhiihh..hiiihh.hhiih......hh......oojjjjjjjjjj22jjjjj2222jjjj1jjjjjjoo.....................",
+      "...........................hhhhh......hiiihh.hiiiih.hhiihh....hhh......ojjjjjjjjj222jjjjjj22222jj1jjjjjjjo......................",
+      "...........................hhiihhhh...hhiiihhhhiiihhhhiiih....hhh......ojjjjjjjjjjj22jjjj22jj22jjjjjjjjjjo......................",
+      "............................hhiiihhhhhhhhiiihhhiiiihhhiiihh..hhhh.....ojjjjjjjj3jjjjjjjjj2jj22jjjjjjjjjjo.......................",
+      ".............................hiiiiiiihhhhiiiiihiiiiihhiiiih..hhih.....ojjjjjjj33jjj3jjjj2222jjjjjjjjjjjjo.......................",
+      "....................h........hhiiiiiiiiiiiiiiiiiiiiiiiiiiihh.hiih....oojjjjjj33j3j3jjjjjjjjjjjjjjjjjjjjo........................",
+      "....................hhhhhhh...hhiiiiiiiiiiiiiiiiiiiiiiiiiihhhhiih....ojjjjjjj333333j33333jjjjjjjjjjjjjjo........................",
+      ".....................hhhhhhhhhhhhiiiiiiiiiiiiiiiiiiiiiiiiiihhiiih....ojjjjjj33j333jjj33j3jjjjjjjjjjjjjo.........................",
+      "......................hhhiiiiihhhiiiiiiiiiiiiiiiiiiiiiiiiiihhiiih.....ojjjjjjjjj3jjj33jjj33j33jjjjjjjjo.........................",
+      "........................hhiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiih.....oojjjjjjjjjjjj3jjj33jj33jjjjjjjoo.........................",
+      ".........................hhiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiih......oojjjjjjjjj3333jj33jj3jjjjjjjjo..........................",
+      "..........................hhiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiihhhhhhhooojjjjjjjjjjjjj3j3j3jjjjjjjjjo..........................",
+      "....................hhhhhhhhhhiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiihhhiihh..ojjjjjjjjjjjjjjj333jjjjjjjjo...........................",
+      ".....................hhhhhhhhiiiiiiiiibbbbbbbbbbbbbbbbiiiiiiiiiiiiiihh....ojjjjjjjjjjjjjjjjjjjjjjjjjo...........................",
+      "......................hhhiiiiiiiiibbbbbbbbbbbbbbbbbbbbbbbbiiiiiiiiihh......ojjjjjjjjjjjjjjjj3jjjjjjo............................",
+      "........................hhhiiiiibbbbbbbbbbbbbbbbbbbbbbbbbbbbbiiiiihh........ojjjjjjjjjjjjjjjjjjjjjjo............................",
+      ".........................hhhiibbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbiih..........ojjjjjjjjjjjjjjjjjjjjo.............................",
+      "........................hhhbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbh.........ojjjjjjjjjjjjjjjjjjjjoo.............................",
+      "........................hhhbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbr.........ojjjjjjjjjjjjjjjjjjoo...............................",
+      "..........................rbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbr........ojjjjooojjjjjjjjjjjo.................................",
+      "..........................rrbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbr.......ojjooo..oooojjjjjjoo..................................",
+      "...........................rbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbr.......o..........ooooooo....................................",
+      "...........................rbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbr.............................................................",
+      ".........................hhrrbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbrr.............................................................",
+      ".........................hhimmrbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbr..............................................................",
+      ".........................hhiimmibbbbbiiiiiiiiibbbbbbbbbbbbbbbbbbbr..............................................................",
+      ".........................hhiimmmiiiiiiiiiiiiiiiiiiiiiibbbbbbbbbbbr..............................................................",
+      "..........................hhimmmiiiiiiiiiiiiiiiiiiiiiiiiiiiibbbbbr..............................................................",
+      "...........................hhhmiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiibhh.............................................................",
+      "..........................rrrbbiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiih.............................................................",
+      ".........................rrbbbbbbiiiiiiiiiiiiiiiiimmiiiiiiiiiiiiiihh............................................................",
+      ".........................rbbbbbbbbbiiiiiiiiiiiiiiimmmmmmiiiiiiiiiiih............................................................",
+      ".........................rrbbbbbbbbbbiiiiiiiiiiiiiimiimmiiiiiiiiiiihh...........................................................",
+      "..........................rrbbbbbbbbbbbbbiiiiiiiiiiimmiiiiiiiiiiiiih............................................................",
+      "...........................rbbbbbbbbbbbbbbbbbbbbiiiiiiiiiiiiiiiiihhh............................................................",
+      "...........................rbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbiibbhrr............................................................",
+      "...........................rbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbh............................................................",
+      "...........................rrrrbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbr............................................................",
+      "..............................rrrrrrbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbr............................................................",
+      "...................................rrrrrrbbbbbbbbbbbbbbbbbbbbbbbbbrr............................................................",
+      "........................................rrrrrrbbbbbbbbbbbbbbbbbbbrr.............................................................",
+      ".............................................rrrrrrbbbbbbbbbbbbbbr..............................................................",
+      "..................................................rrrrbbbbbbbbbbrr..............................................................",
+      ".....................................................rrrbbbbbbbrr...............................................................",
+      ".......................................................rrrrrrrrr................................................................"
+    ]
+  }
+};
+
+const SCALE = 5;            // how big one OLED pixel is on this page
+const FPS = 30;
+
+// Which traced characters are lit in each style
+const LIT = { line: "hbmo123", fill: "hoijr" };
+
+// The picture stays still. Only a shine slides across it.
+const SHINE_FRAMES = 22;    // how long the shine takes to cross the screen
+const REST_FRAMES = 75;     // still picture between two shines
+const SHINE_WIDTH = 4;      // wide stripe, in pixels
+const SHINE_GAP = 3;        // gap before the thin second stripe
+const SHINE_SLANT = 0.5;    // how much the stripes lean
+
+const canvas = document.getElementById("screen");
+const ctx = canvas.getContext("2d");
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+let view = "fitted";
+let style = "fill";
+let frame = 0;
+let layout = null;
+
+// Build the still picture: one byte per pixel, plus which pixels belong to the drawing.
+function prepare(trace) {
+  const W = trace.w, H = trace.h;
+  const lit = new Uint8Array(W * H);
+  const shape = new Uint8Array(W * H);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const ch = trace.rows[y][x];
+      if (ch === ".") continue;
+      shape[y * W + x] = 1;
+      if (LIT[style].includes(ch)) lit[y * W + x] = 1;
+    }
+  }
+  return { W, H, lit, shape };
+}
+
+// The still picture with the shine at frame f. Inside the stripes the drawing flips
+// (white turns black, black turns white), which reads as a glare on a 1 bit screen.
+function drawFrame(f) {
+  const { W, H, lit, shape } = layout;
+  const out = lit.slice();
+  if (f >= SHINE_FRAMES) return out;
+
+  const travel = W + H * SHINE_SLANT + 16;
+  const front = -8 + travel * (f / SHINE_FRAMES);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      if (!shape[y * W + x]) continue;
+      const behind = front - (x + (H - 1 - y) * SHINE_SLANT);
+      const wide = behind >= 0 && behind < SHINE_WIDTH;
+      const thin = behind >= SHINE_WIDTH + SHINE_GAP && behind < SHINE_WIDTH + SHINE_GAP + 1;
+      if (wide || thin) out[y * W + x] ^= 1;
+    }
+  }
+  return out;
+}
+
+function paint(lit) {
+  const { W, H } = layout;
+  const image = ctx.createImageData(W, H);
+  for (let i = 0; i < W * H; i++) {
+    const on = lit[i];
+    image.data[i * 4] = on ? 236 : 0;
+    image.data[i * 4 + 1] = on ? 244 : 0;
+    image.data[i * 4 + 2] = on ? 255 : 0;
+    image.data[i * 4 + 3] = 255;
+  }
+  ctx.putImageData(image, 0, 0);
+}
+
+// The still picture as an Adafruit GFX bitmap (rows, 8 pixels per byte, left pixel first).
+function arduinoCode() {
+  const { W, H, lit } = layout;
+  const bytesPerRow = Math.ceil(W / 8);
+  const out = [];
+  for (let y = 0; y < H; y++) {
+    const row = [];
+    for (let b = 0; b < bytesPerRow; b++) {
+      let value = 0;
+      for (let bit = 0; bit < 8; bit++) {
+        const x = b * 8 + bit;
+        if (x < W && lit[y * W + x]) value |= 0x80 >> bit;
+      }
+      row.push("0x" + value.toString(16).padStart(2, "0"));
+    }
+    out.push("  " + row.join(", "));
+  }
+  return "// Nah, I'd Win 2, " + W + "x" + H + ", " + view + " layout, " + style + " style\n" +
+    "const int GOJO_WIDTH = " + W + ";\n" +
+    "const int GOJO_HEIGHT = " + H + ";\n\n" +
+    "const unsigned char gojoBitmap[] PROGMEM = {\n" + out.join(",\n") + "\n};\n\n" +
+    "// display.clearDisplay();\n" +
+    "// display.drawBitmap(0, 0, gojoBitmap, GOJO_WIDTH, GOJO_HEIGHT, SSD1306_WHITE);\n" +
+    "// display.display();\n";
+}
+
+function refresh() {
+  layout = prepare(TRACE[view]);
+  canvas.width = layout.W;
+  canvas.height = layout.H;
+  canvas.style.width = layout.W * SCALE + "px";
+  document.getElementById("meta").textContent = layout.W + " x " + layout.H + " OLED, 1 bit";
+  document.getElementById("code").textContent = arduinoCode();
+  for (const b of document.querySelectorAll("[data-view]")) b.setAttribute("aria-pressed", String(b.dataset.view === view));
+  for (const b of document.querySelectorAll("[data-style]")) b.setAttribute("aria-pressed", String(b.dataset.style === style));
+  frame = 0;
+  paint(layout.lit);
+}
+
+for (const b of document.querySelectorAll("[data-view]")) {
+  b.addEventListener("click", () => { view = b.dataset.view; refresh(); });
+}
+for (const b of document.querySelectorAll("[data-style]")) {
+  b.addEventListener("click", () => { style = b.dataset.style; refresh(); });
+}
+
+const copyButton = document.getElementById("copy");
+copyButton.addEventListener("click", async () => {
+  const text = document.getElementById("code").textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (err) {
+    const area = document.createElement("textarea");
+    area.value = text;
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand("copy");
+    area.remove();
+  }
+  copyButton.textContent = "Copied";
+  setTimeout(() => { copyButton.textContent = "Copy"; }, 1200);
+});
+
+function tick() {
+  paint(drawFrame(frame));
+  frame = (frame + 1) % (SHINE_FRAMES + REST_FRAMES);
+}
+
+refresh();
+// With reduced motion on, the picture stays completely still.
+if (!reducedMotion) setInterval(tick, 1000 / FPS);
+</script>
+</body>
+</html>

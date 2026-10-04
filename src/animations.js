@@ -16,6 +16,36 @@
 */
 export const ANIMATIONS = [
   {
+    slug: "nah-id-win-2",
+    title: "Nah, I'd Win 2",
+    blurb: "The blindfolded head with the speech bubble beside it, traced for the full screen, with a shine that slides across every few seconds. Two layouts, Line or Fill.",
+    added: "2026-10-05",
+    tags: ["shine", "line or fill", "ESP32 sketch"],
+    screen: "128 x 64 OLED, I2C, 0.96 inch",
+    files: [
+      { label: "Download the page", file: "index.html", note: "One HTML file. Works offline." },
+      { label: "Download the sketch", file: "NahIdWin2_OneFile.ino", note: "Arduino sketch, pictures inside. Put it in a folder named NahIdWin2_OneFile." },
+    ],
+    guides: [
+      { title: "How to put it on your board", file: "guide.md" },
+    ],
+  },
+  {
+    slug: "nah-id-win",
+    title: "Nah, I'd Win",
+    blurb: "The speech bubble on its own, traced pixel by pixel, with a shine that slides across every few seconds. Tall or wide, Line or Fill.",
+    added: "2026-10-05",
+    tags: ["shine", "portrait", "ESP32 sketch"],
+    screen: "128 x 64 OLED, I2C, 0.96 inch",
+    files: [
+      { label: "Download the page", file: "index.html", note: "One HTML file. Works offline." },
+      { label: "Download the sketch", file: "NahIdWin_OneFile.ino", note: "Arduino sketch, pictures inside. Put it in a folder named NahIdWin_OneFile." },
+    ],
+    guides: [
+      { title: "How to put it on your board", file: "guide.md" },
+    ],
+  },
+  {
     slug: "the-boogley",
     title: "The Boogley",
     blurb: "A dancing character traced from a 15 second video, 151 frames, one every tenth of a second. Pick a style and a speed, then copy the ESP32 sketch with the frames already inside.",

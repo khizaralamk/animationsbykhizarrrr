@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nah, I'd Win</title>
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAApklEQVR42mO08lrBQEvAxEBjgGLB0a3hR7eGYyoiVZyuPmDB6i4GBgZr75V4xHE5HFPvQPiAGH/gUj8AccAIyQcEEwNJgK5xwIick2nhD3qloiEcB0xwOzGT/NAoTVFyMi+vIFUM1bObMUD1wagFA5+KXpxaRxVD3UpeDYIaDReQMAsiycf0rQ8gYFePGFVCfyDi4NKhDAYGBgmzIVUWseCyecjkZAD37jw57HfGuwAAAABJRU5ErkJggg==">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 40px 16px 64px;
+    background: #0b0b0c;
+    color: #e8e6e1;
+    font-family: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  main { max-width: 680px; margin: 0 auto; }
+  h1 { margin: 0 0 4px; font-size: 22px; font-weight: 700; letter-spacing: 0.02em; }
+  h1 { display: flex; align-items: center; gap: 12px; }
+  .logo { width: 32px; height: 32px; border-radius: 4px; image-rendering: pixelated; image-rendering: crisp-edges; }
+  .meta { margin: 0 0 28px; color: #8c8a85; }
+
+  .stage { display: flex; justify-content: center; margin-bottom: 24px; }
+  .oled {
+    padding: 14px;
+    background: #000;
+    border: 1px solid #2a2a2e;
+    border-radius: 8px;
+    line-height: 0;
+    max-width: 100%;
+  }
+  canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 20px 28px; justify-content: center; margin-bottom: 36px; }
+  .group { display: flex; }
+  button {
+    font: inherit;
+    color: #e8e6e1;
+    background: #17171a;
+    border: 1px solid #34343a;
+    padding: 7px 14px;
+    cursor: pointer;
+  }
+  .group button + button { border-left: 0; }
+  .group button:first-child { border-radius: 6px 0 0 6px; }
+  .group button:last-child { border-radius: 0 6px 6px 0; }
+  .group button:only-child { border-radius: 6px; }
+  button:hover { background: #222226; }
+  button:focus-visible { outline: 2px solid #e8e6e1; outline-offset: 2px; }
+  button[aria-pressed="true"] { background: #e8e6e1; color: #0b0b0c; border-color: #e8e6e1; }
+
+  .code-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  h2 { margin: 0; font-size: 14px; font-weight: 700; }
+  #copy { border-radius: 6px; }
+  .code-wrap {
+    background: #121214;
+    border: 1px solid #2a2a2e;
+    border-radius: 8px;
+    max-height: 280px;
+    overflow: auto;
+  }
+  pre { margin: 0; padding: 14px; font-size: 12px; color: #b9b7b1; }
+</style>
+<!-- Shown inside another site (?embed=1): report the page height so the frame fits, and use the site's cursor. -->
+<script>
+  (() => {
+    const params = new URLSearchParams(location.search);
+    if (!params.has("embed") || window.parent === window) return;
+    document.documentElement.dataset.embed = "1";
+    document.documentElement.dataset.theme = "dark";      // this page is always dark, so it takes the cursor made for dark pages
+    const sendHeight = () => window.parent.postMessage({ abkHeight: document.documentElement.scrollHeight }, "*");
+    window.addEventListener("load", () => { sendHeight(); if (window.ResizeObserver) new ResizeObserver(sendHeight).observe(document.body); });
+  })();
+</script>
+<style>
+  :root[data-embed] body { padding-top: 20px; padding-bottom: 28px; }
+  /* Embedded: use the host site's pixel cursor (page coloured arrow with an edge in the opposite colour). */
+  :root[data-embed], :root[data-embed] * { cursor: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2236%22 height=%2254%22 shape-rendering=%22crispEdges%22%3E%3Cpath fill=%22%23121315%22 d=%22M0 0h3v3h-3zM0 3h6v3h-6zM0 6h3v3h-3zM6 6h3v3h-3zM0 9h3v3h-3zM9 9h3v3h-3zM0 12h3v3h-3zM12 12h3v3h-3zM0 15h3v3h-3zM15 15h3v3h-3zM0 18h3v3h-3zM18 18h3v3h-3zM0 21h3v3h-3zM21 21h3v3h-3zM0 24h3v3h-3zM24 24h3v3h-3zM0 27h3v3h-3zM27 27h3v3h-3zM0 30h3v3h-3zM30 30h3v3h-3zM0 33h3v3h-3zM21 33h15v3h-15zM0 36h3v3h-3zM12 36h3v3h-3zM21 36h3v3h-3zM0 39h3v3h-3zM9 39h3v3h-3zM15 39h3v3h-3zM24 39h3v3h-3zM0 42h3v3h-3zM6 42h3v3h-3zM15 42h3v3h-3zM24 42h3v3h-3zM0 45h6v3h-6zM18 45h3v3h-3zM27 45h3v3h-3zM0 48h3v3h-3zM18 48h3v3h-3zM27 48h3v3h-3zM21 51h6v3h-6z%22/%3E%3Cpath fill=%22%23FFFFFF%22 d=%22M3 6h3v3h-3zM3 9h6v3h-6zM3 12h9v3h-9zM3 15h12v3h-12zM3 18h15v3h-15zM3 21h18v3h-18zM3 24h21v3h-21zM3 27h24v3h-24zM3 30h27v3h-27zM3 33h18v3h-18zM3 36h9v3h-9zM15 36h6v3h-6zM3 39h6v3h-6zM18 39h6v3h-6zM3 42h3v3h-3zM18 42h6v3h-6zM21 45h6v3h-6zM21 48h6v3h-6z%22/%3E%3C/svg%3E") 0 0, auto; }
+  :root[data-embed][data-theme="dark"], :root[data-embed][data-theme="dark"] * { cursor: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2236%22 height=%2254%22 shape-rendering=%22crispEdges%22%3E%3Cpath fill=%22%23F1F2EE%22 d=%22M0 0h3v3h-3zM0 3h6v3h-6zM0 6h3v3h-3zM6 6h3v3h-3zM0 9h3v3h-3zM9 9h3v3h-3zM0 12h3v3h-3zM12 12h3v3h-3zM0 15h3v3h-3zM15 15h3v3h-3zM0 18h3v3h-3zM18 18h3v3h-3zM0 21h3v3h-3zM21 21h3v3h-3zM0 24h3v3h-3zM24 24h3v3h-3zM0 27h3v3h-3zM27 27h3v3h-3zM0 30h3v3h-3zM30 30h3v3h-3zM0 33h3v3h-3zM21 33h15v3h-15zM0 36h3v3h-3zM12 36h3v3h-3zM21 36h3v3h-3zM0 39h3v3h-3zM9 39h3v3h-3zM15 39h3v3h-3zM24 39h3v3h-3zM0 42h3v3h-3zM6 42h3v3h-3zM15 42h3v3h-3zM24 42h3v3h-3zM0 45h6v3h-6zM18 45h3v3h-3zM27 45h3v3h-3zM0 48h3v3h-3zM18 48h3v3h-3zM27 48h3v3h-3zM21 51h6v3h-6z%22/%3E%3Cpath fill=%22%230E0F11%22 d=%22M3 6h3v3h-3zM3 9h6v3h-6zM3 12h9v3h-9zM3 15h12v3h-12zM3 18h15v3h-15zM3 21h18v3h-18zM3 24h21v3h-21zM3 27h24v3h-24zM3 30h27v3h-27zM3 33h18v3h-18zM3 36h9v3h-9zM15 36h6v3h-6zM3 39h6v3h-6zM18 39h6v3h-6zM3 42h3v3h-3zM18 42h6v3h-6zM21 45h6v3h-6zM21 48h6v3h-6z%22/%3E%3C/svg%3E") 0 0, auto; }
+</style>
+</head>
+<body>
+<main>
+  <h1><img class="logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAApklEQVR42mO08lrBQEvAxEBjgGLB0a3hR7eGYyoiVZyuPmDB6i4GBgZr75V4xHE5HFPvQPiAGH/gUj8AccAIyQcEEwNJgK5xwIick2nhD3qloiEcB0xwOzGT/NAoTVFyMi+vIFUM1bObMUD1wagFA5+KXpxaRxVD3UpeDYIaDReQMAsiycf0rQ8gYFePGFVCfyDi4NKhDAYGBgmzIVUWseCyecjkZAD37jw57HfGuwAAAABJRU5ErkJggg==" alt="">Nah, I'd Win</h1>
+  <p class="meta" id="meta"></p>
+
+  <div class="stage">
+    <div class="oled"><canvas id="screen"></canvas></div>
+  </div>
+
+  <div class="controls">
+    <div class="group" role="group" aria-label="Screen direction">
+      <button type="button" data-mode="portrait">Portrait</button>
+      <button type="button" data-mode="landscape">Landscape</button>
+    </div>
+    <div class="group" role="group" aria-label="Drawing style">
+      <button type="button" data-style="line">Line</button>
+      <button type="button" data-style="fill">Fill</button>
+    </div>
+  </div>
+
+  <div class="code-head">
+    <h2>Arduino bitmap</h2>
+    <button type="button" id="copy">Copy</button>
+  </div>
+  <div class="code-wrap"><pre id="code"></pre></div>
+</main>
+
+<script>
+// Traced from the source drawing, one character per OLED pixel:
+//   .  outside the bubble      o  bubble outline      i  inside the bubble
+//   1  NAH,                    2  I'D                 3  WIN.
+const TRACE = {
+  portrait: {
+    w: 64, h: 128,
+    rows: [
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "..................................oooo..........................",
+      "..............................ooooooooooo.......................",
+      "..........................oooooooiiiiiioooo.....................",
+      ".......................ooooooiiiiiiiiiiiioooo...................",
+      "....................ooooooiiiiiiiiiiiiiiiiioooo.................",
+      "..................ooooiiiiiiiiiiiiiiiiiiiiiiiooo................",
+      "................ooooiiiiiiiiiiiiiiiiiiiiiiiiiiooo...............",
+      ".............oooooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo..............",
+      "...........ooooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo.............",
+      ".........ooooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiooo...........",
+      "........oooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiooo..........",
+      "......oooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiooo.........",
+      "....ooooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo........",
+      "..ooooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo........",
+      "..ooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo.......",
+      "..oiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo......",
+      "..oiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo.....",
+      ".ooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo.....",
+      ".ooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo....",
+      ".ooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo...",
+      ".ooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo...",
+      ".ooiiiiiiiiiiiiiiiiiiiii11iiiiiiiiiiiiiiiiiii1iiiiiiiiiiiiiioo..",
+      ".ooiiiiiiiiiiiiiii11iiii111iiiii11iiiii1iiii11iiiiiiiiiiiiiiioo.",
+      ".ooiiiiiiiiiiiiii111iiii11iiiiii11iiii111iii11iiiiiiiiiiiiiiiio.",
+      ".ooiiiiiiiiiiiiiii11iiii11iiiiii11iiii111iii11iiiiiiiiiiiiiiiioo",
+      ".ooiiiiiiiiiiiiiii11iiii11iiiii111iiii11iiii11iiiiiiiiiiiiiiiiio",
+      ".ooiiiiiiiiiiiiii1111iii11iiii1111iiii11iiii11iiiiiiiiiiiiiiiiio",
+      ".ooiiiiiiiiiiiiii1111iii11iiii11111iii11iiii11iiiiiiiiiiiiiiiiio",
+      ".ooiiiiiiiiiiiiii1111iii11iii11ii11iii1111111iiiiiiiiiiiiiiiiiio",
+      ".oiiiiiiiiiiiiiii1111iii11ii111i111iii1111i11iiiiiiiiiiiiiiiiiio",
+      ".oiiiiiiiiiiiiii11ii11i11iii1111111ii11iiii11iiiiiiiiiiiiiiiiiio",
+      ".oiiiiiiiiiiiiii11ii11111ii111iii11ii11iiii1iiiii11iiiiiiiiiiiio",
+      "ooiiiiiiiiiiiiii11iii111ii11iiiiii1ii1iiiii1iiiii1iiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii1iiiiiiiiii11iiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii11iiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiiiiiiiiiiiiiiiiiii2iiiiiiiiiiiiiii1iiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiiiiiiiiiiiii2222i22iiiiiii2222iiiiiiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiiiiiiiii22222222i22iiii22222222iiiiiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiiiiiii222222222i22iii2222222222iiiiiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiiiiiii222222iiii2iiii222iiii222iiiiiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiiiiiiiiiii22iiii2iiiii22iiii22iiiiiiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiiiiiiiiii22iiiiiiiiiii22iiii22iiiiiiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiiiiiiiiii22iiiiiiiiii22iiii22iiiiiiiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiiiiiiiiii22iiiiiiiiii22iii22iiiiiiiiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiiiiiiiiii22iiiiiiiiii22ii22iiiiiiiiiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiiiiiiiiii2iiiiiiiiiii2ii22iiiiiiiiiiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiiiiiiiii222222iiiiii22222iiiiiiiiiiiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiiiii2222222iiiiiiiii222iiiiiiiiiiiiiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiiiii22iiiiiiiiiiiiii2iiiiiiiiiiiiiiiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiiiiiiiiiiii33iiiiiii3333iiiiiiii33iiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiiii33iiiii333ii333333333ii33iiii33iiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiii333iiiii333i33333333iii333iiii33iiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiii333ii3ii333ii33i33iiiiii33iiii33iiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiii333ii33i33iiiiii33iiiii333iiii33iiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiii33ii333i33iiiiii33iiiii3333iii33iiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiii33i3333i33iiiii33iiiiii3333iii33iiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiii33i3333i33iiiii33iiiiii3333iii33iiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiiii3333i33i3iiiiii33iiiiii33i33ii3iiiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiii3333iii333iiiiii3iiiiii33ii33i33iiiiiiiiiiiiiiiioo",
+      "ooiiiiiiiiiiii333iiii333iiiii333333ii33iii333iiii33iiiiiiiiiiioo",
+      "ooiiiiiiiiiiii33iiiiiiiiii333333iiiii3iiiii3iiiii33iiiiiiiiiioo.",
+      "ooiiiiiiiiiiiiiiiiiiiiiiii3iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo.",
+      ".oiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo..",
+      ".ooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo...",
+      ".ooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo...",
+      ".oooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo....",
+      "..oooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo.....",
+      "...oooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo.....",
+      ".....oooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo......",
+      ".......ooooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo.......",
+      ".........ooooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiio........",
+      "...........ooooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo........",
+      ".............ooooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo.........",
+      "................ooooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo..........",
+      "..................ooooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo..........",
+      "....................ooooiiiiiiiiiiiiiiiiiiiiiiiiioooo...........",
+      "......................ooiiiiiiiiiiiiiiiiiiiiiooooooo............",
+      ".......................oiiiiiiiiiiiiiiiiioooooo.................",
+      "......................ooiiiiiiiioooooooooooo....................",
+      "......................ooiiiiiiiooo...ooo........................",
+      "......................oiiiiiiioo................................",
+      "......................oiiiiiioo.................................",
+      "......................oiiiiioo..................................",
+      "......................oiiiio....................................",
+      ".....................oiiioo.....................................",
+      ".....................oiioo......................................",
+      ".....................oioo.......................................",
+      ".....................oo.........................................",
+      ".....................o..........................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................",
+      "................................................................"
+    ]
+  },
+  landscape: {
+    w: 128, h: 64,
+    rows: [
+      "................................................................ooooo...........................................................",
+      "............................................................ooooooiiooo.........................................................",
+      ".........................................................oooooiiiiiiiiooo.......................................................",
+      "......................................................ooooiiiiiiiiiiiiiioo......................................................",
+      "....................................................ooooiiiiiiiiiiiiiiiiiioo....................................................",
+      "..................................................oooiiiiiiiiiiiiiiiiiiiiiioo...................................................",
+      "................................................oooiiiiiiiiiiiiiiiiiiiiiiiiioo..................................................",
+      "..............................................oooiiiiiiiiiiiiiiiiiiiiiiiiiiiioo.................................................",
+      "............................................oooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo................................................",
+      "...........................................ooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo...............................................",
+      "..........................................ooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo..............................................",
+      "..........................................oiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiio..............................................",
+      "..........................................oiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo.............................................",
+      "..........................................oiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo............................................",
+      "..........................................oiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo...........................................",
+      "..........................................oiiiiiiiiiii1iii11iiii1iiiiiii11iiiiiiiiiio...........................................",
+      "..........................................oiiiiiiiiii11iii11iiii1iii11ii11iiiiiiiiiioo..........................................",
+      "..........................................oiiiiiiiiii11iii11iii11iii11ii11iiiiiiiiiiio..........................................",
+      ".........................................ooiiiiiiiiii111ii11iii11iii1iii11iiiiiiiiiiio..........................................",
+      ".........................................ooiiiiiiiiii111ii1iii111iii1iii1iiiiiiiiiiiio..........................................",
+      ".........................................ooiiiiiiiiii111ii1ii11i11ii11111iiiiiiiiiiiio..........................................",
+      ".........................................ooiiiiiiiiii1i1111ii11111i11ii11iiiiiiiiiiiio..........................................",
+      ".........................................ooiiiiiiiii11i111ii11ii11i1iii1iii11iiiiiiiio..........................................",
+      ".........................................ooiiiiiiiii1iiiiiiiiiiiiii1iiiiiii1iiiiiiiiio..........................................",
+      ".........................................ooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii11iiiiiiiiio..........................................",
+      ".........................................oiiiiiiiiiiiiiiiiii2ii2iiiii2iiiiiiiiiiiiiiio..........................................",
+      ".........................................oiiiiiiiiiiiii22222222iii222222iiiiiiiiiiiiio..........................................",
+      ".........................................oiiiiiiiiiiii22222iii2ii2222222iiiiiiiiiiiiio..........................................",
+      ".........................................oiiiiiiiiiiiiiii22ii2iii22iii22iiiiiiiiiiiiio..........................................",
+      ".........................................oiiiiiiiiiiiiiii2iiiiiii22iii2iiiiiiiiiiiiiio..........................................",
+      ".........................................oiiiiiiiiiiiiiii2iiiiiii22ii2iiiiiiiiiiiiiiio..........................................",
+      ".........................................oiiiiiiiiiiiiii22iiiiiii2ii2iiiiiiiiiiiiiiiio..........................................",
+      ".........................................oiiiiiiiiiiiiii2222iiiii2i2iiiiiiiiiiiiiiiiio..........................................",
+      ".........................................oiiiiiiiiiii2222222iiii222iiiiiiiiiiiiiiiiiio..........................................",
+      ".........................................oiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiio..........................................",
+      ".........................................oiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiio..........................................",
+      ".........................................oiiiiiiiiiiiiiiii3iiii3333iiiiii33iiiiiiiiiio..........................................",
+      ".........................................oiiiiiiiiii33iii33i3333333i33iii3iiiiiiiiiiio..........................................",
+      ".........................................oiiiiiiiiii33i3i33i3333iiii33iii3iiiiiiiiiiio..........................................",
+      ".........................................oiiiiiiiiii3ii3i33iiii3iiii33iii3iiiiiiiiiiio..........................................",
+      ".........................................oiiiiiiiiii3i33i33iii33iiii333ii3iiiiiiiiiiio..........................................",
+      ".........................................oiiiiiiiiii333333iiii33iiii333ii3iiiiiiiiiiio..........................................",
+      ".........................................oiiiiiiiii333i333iiii3iiii33i3i33iiiiiiiiiiio..........................................",
+      ".........................................ooiiiiiiii33iii33iii33333i3ii333iii3iiiiiiiio..........................................",
+      ".........................................ooiiiiiiii3iiiiiii333iiiii3iiiiiiiiiiiiiiiioo..........................................",
+      ".........................................ooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo...........................................",
+      ".........................................ooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiio............................................",
+      "..........................................oiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo............................................",
+      "..........................................oooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioo.............................................",
+      "............................................oooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiio..............................................",
+      ".............................................ooooiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiio...............................................",
+      "................................................oooiiiiiiiiiiiiiiiiiiiiiiiiiiiioo...............................................",
+      "..................................................oooiiiiiiiiiiiiiiiiiiiiiiiiioo................................................",
+      "....................................................oooiiiiiiiiiiiiiiiiiiiiiiio.................................................",
+      ".......................................................oooiiiiiiiiiiiiiiiiiiooo.................................................",
+      ".........................................................oiiiiiiiiiiiiiioooooo..................................................",
+      ".........................................................oiiiiiioooooooooo......................................................",
+      ".........................................................oiiiiiooooooo..........................................................",
+      "........................................................oiiiiio.................................................................",
+      "........................................................oiiioo..................................................................",
+      "........................................................oiioo...................................................................",
+      "........................................................oioo....................................................................",
+      ".........................................................o......................................................................",
+      ".......................................................oo......................................................................."
+    ]
+  }
+};
+
+const SCALE = 5;            // how big one OLED pixel is on this page
+const FPS = 30;
+
+// Which traced characters are lit in each style
+const LIT = { line: "o123", fill: "oi" };
+
+// The picture stays still. Only a shine slides across it.
+const SHINE_FRAMES = 22;    // how long the shine takes to cross the screen
+const REST_FRAMES = 75;     // still picture between two shines
+const SHINE_WIDTH = 4;      // wide stripe, in pixels
+const SHINE_GAP = 3;        // gap before the thin second stripe
+const SHINE_SLANT = 0.5;    // how much the stripes lean
+
+const canvas = document.getElementById("screen");
+const ctx = canvas.getContext("2d");
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+let mode = "portrait";
+let style = "line";
+let frame = 0;
+let layout = null;
+
+// Build the still picture: one byte per pixel, plus which pixels belong to the drawing.
+function prepare(trace) {
+  const W = trace.w, H = trace.h;
+  const lit = new Uint8Array(W * H);
+  const shape = new Uint8Array(W * H);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const ch = trace.rows[y][x];
+      if (ch === ".") continue;
+      shape[y * W + x] = 1;
+      if (LIT[style].includes(ch)) lit[y * W + x] = 1;
+    }
+  }
+  return { W, H, lit, shape };
+}
+
+// The still picture with the shine at frame f. Inside the stripes the drawing flips
+// (white turns black, black turns white), which reads as a glare on a 1 bit screen.
+function drawFrame(f) {
+  const { W, H, lit, shape } = layout;
+  const out = lit.slice();
+  if (f >= SHINE_FRAMES) return out;
+
+  const travel = W + H * SHINE_SLANT + 16;
+  const front = -8 + travel * (f / SHINE_FRAMES);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      if (!shape[y * W + x]) continue;
+      const behind = front - (x + (H - 1 - y) * SHINE_SLANT);
+      const wide = behind >= 0 && behind < SHINE_WIDTH;
+      const thin = behind >= SHINE_WIDTH + SHINE_GAP && behind < SHINE_WIDTH + SHINE_GAP + 1;
+      if (wide || thin) out[y * W + x] ^= 1;
+    }
+  }
+  return out;
+}
+
+function paint(lit) {
+  const { W, H } = layout;
+  const image = ctx.createImageData(W, H);
+  for (let i = 0; i < W * H; i++) {
+    const on = lit[i];
+    image.data[i * 4] = on ? 236 : 0;
+    image.data[i * 4 + 1] = on ? 244 : 0;
+    image.data[i * 4 + 2] = on ? 255 : 0;
+    image.data[i * 4 + 3] = 255;
+  }
+  ctx.putImageData(image, 0, 0);
+}
+
+// The still picture as an Adafruit GFX bitmap (rows, 8 pixels per byte, left pixel first).
+function arduinoCode() {
+  const { W, H, lit } = layout;
+  const bytesPerRow = Math.ceil(W / 8);
+  const out = [];
+  for (let y = 0; y < H; y++) {
+    const row = [];
+    for (let b = 0; b < bytesPerRow; b++) {
+      let value = 0;
+      for (let bit = 0; bit < 8; bit++) {
+        const x = b * 8 + bit;
+        if (x < W && lit[y * W + x]) value |= 0x80 >> bit;
+      }
+      row.push("0x" + value.toString(16).padStart(2, "0"));
+    }
+    out.push("  " + row.join(", "));
+  }
+  const rotate = mode === "portrait"
+    ? "// Portrait: call display.setRotation(1); before drawing.\n"
+    : "";
+  return "// Nah, I'd Win, " + W + "x" + H + ", " + style + " style\n" + rotate +
+    "const int BUBBLE_WIDTH = " + W + ";\n" +
+    "const int BUBBLE_HEIGHT = " + H + ";\n\n" +
+    "const unsigned char bubbleBitmap[] PROGMEM = {\n" + out.join(",\n") + "\n};\n\n" +
+    "// display.clearDisplay();\n" +
+    "// display.drawBitmap(0, 0, bubbleBitmap, BUBBLE_WIDTH, BUBBLE_HEIGHT, SSD1306_WHITE);\n" +
+    "// display.display();\n";
+}
+
+function refresh() {
+  layout = prepare(TRACE[mode]);
+  canvas.width = layout.W;
+  canvas.height = layout.H;
+  canvas.style.width = layout.W * SCALE + "px";
+  document.getElementById("meta").textContent = layout.W + " x " + layout.H + " OLED, 1 bit";
+  document.getElementById("code").textContent = arduinoCode();
+  for (const b of document.querySelectorAll("[data-mode]")) b.setAttribute("aria-pressed", String(b.dataset.mode === mode));
+  for (const b of document.querySelectorAll("[data-style]")) b.setAttribute("aria-pressed", String(b.dataset.style === style));
+  frame = 0;
+  paint(layout.lit);
+}
+
+for (const b of document.querySelectorAll("[data-mode]")) {
+  b.addEventListener("click", () => { mode = b.dataset.mode; refresh(); });
+}
+for (const b of document.querySelectorAll("[data-style]")) {
+  b.addEventListener("click", () => { style = b.dataset.style; refresh(); });
+}
+
+const copyButton = document.getElementById("copy");
+copyButton.addEventListener("click", async () => {
+  const text = document.getElementById("code").textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (err) {
+    const area = document.createElement("textarea");
+    area.value = text;
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand("copy");
+    area.remove();
+  }
+  copyButton.textContent = "Copied";
+  setTimeout(() => { copyButton.textContent = "Copy"; }, 1200);
+});
+
+function tick() {
+  paint(drawFrame(frame));
+  frame = (frame + 1) % (SHINE_FRAMES + REST_FRAMES);
+}
+
+refresh();
+// With reduced motion on, the picture stays completely still.
+if (!reducedMotion) setInterval(tick, 1000 / FPS);
+</script>
+</body>
+</html>
