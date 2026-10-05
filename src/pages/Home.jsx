@@ -17,6 +17,7 @@ const SORTS = [
   { key: "downloads", label: "Most downloaded" },
   { key: "hearts", label: "Most hearts" },
 ];
+const SEARCH_DELAY_MS = 250;      // how long the search waits after the last key press before filtering
 const TICKER = ["128 x 64 pixels", "1 bit per pixel", "ESP32 ready", "SSD1306 and SH1106", "one HTML file each", "works offline", "free to download"];
 
 /*
@@ -31,12 +32,30 @@ export default function Home() {
   const { stats, totals, hearted, live } = useSite();
   const root = useRef(null);
 
+  // Search. "query" is what is in the box right now; "term" follows it a moment later (debouncing),
+  // so the cards are not re-filtered on every single key press while someone is still typing.
+  const [query, setQuery] = useState("");
+  const [term, setTerm] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setTerm(query.trim().toLowerCase()), SEARCH_DELAY_MS);
+    return () => clearTimeout(timer);                       // a new key press cancels the wait and starts it again
+  }, [query]);
+
   const all = useMemo(() => newestFirst(), []);
+  // An animation matches when every word typed appears somewhere in its title, blurb, tags or screen.
+  const matches = useMemo(() => {
+    if (!term) return all;
+    const words = term.split(/\s+/);
+    return all.filter((a) => {
+      const text = [a.title, a.blurb, a.screen, ...(a.tags || [])].join(" ").toLowerCase();
+      return words.every((w) => text.includes(w));
+    });
+  }, [all, term]);
   const lists = useMemo(() => ({
-    free: all.filter((a) => !isPaid(a)),
-    paid: all.filter(isPaid),
-    favourites: all.filter((a) => hearted.has(a.slug)),
-  }), [all, hearted]);
+    free: matches.filter((a) => !isPaid(a)),
+    paid: matches.filter(isPaid),
+    favourites: matches.filter((a) => hearted.has(a.slug)),
+  }), [matches, hearted]);
 
   const list = useMemo(() => {
     const items = [...lists[tab]];
@@ -68,10 +87,12 @@ export default function Home() {
       gsap.from("[data-reveal]", { opacity: 0, y: 18, duration: 0.3, stagger: 0.05, ease: "steps(4)", clearProps: "all" });
     }, root);
     return () => mm.revert();
-  }, [tab, sort]);
+  }, [tab, sort, term]);
 
   const setTab = (key) => setParams(key === "free" ? {} : { tab: key }, { replace: true });
-  const heroList = lists.free.length ? lists.free : all;
+  const heroList = useMemo(() => { const free = all.filter((a) => !isPaid(a)); return free.length ? free : all; }, [all]);
+  // If the search found nothing in this tab but did in another, say where.
+  const elsewhere = term && list.length === 0 ? TABS.find((t) => t.key !== tab && t.key !== "favourites" && lists[t.key].length > 0) : null;
 
   return (
     <div ref={root} className="home">
@@ -112,14 +133,22 @@ export default function Home() {
               </button>
             ))}
           </div>
-          {live && (
-            <label className="sort">
-              <span>Sort</span>
-              <select value={sort} onChange={(e) => setSort(e.target.value)}>
-                {SORTS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-              </select>
+          <div className="tools">
+            <label className="search">
+              <PixelIcon name="search" size={15} />
+              <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search animations"
+                aria-label="Search animations" autoComplete="off" spellCheck="false" enterKeyHint="search" />
+              {query && <button type="button" className="clear" aria-label="Clear the search" onClick={() => setQuery("")}><PixelIcon name="close" size={11} /></button>}
             </label>
-          )}
+            {live && (
+              <label className="sort">
+                <span>Sort</span>
+                <select value={sort} onChange={(e) => setSort(e.target.value)}>
+                  {SORTS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+                </select>
+              </label>
+            )}
+          </div>
         </div>
 
         <div id="tab-panel" role="tabpanel" aria-labelledby={"tab-" + tab}>
@@ -127,10 +156,22 @@ export default function Home() {
             <p className="licence"><b>Pay once, use it anywhere.</b> When you buy an animation you can use it in commercial products however you want.</p>
           )}
 
-          {list.length > 0 ? (
+          {term && <p className="note" aria-live="polite">{list.length} {list.length === 1 ? "result" : "results"} for "{term}" in {TABS.find((t) => t.key === tab).label}.</p>}
+
+          {term && list.length === 0 ? (
+            <div className="empty px-box">
+              <PixelIcon name="search" size={34} />
+              <h2>Nothing matches "{term}"</h2>
+              <p className="note">{elsewhere ? `There ${lists[elsewhere.key].length === 1 ? "is 1 match" : `are ${lists[elsewhere.key].length} matches`} under ${elsewhere.label}.` : "Try a shorter word, like glitch, eyes or dance."}</p>
+              <div className="actions">
+                {elsewhere && <button className="btn primary" onClick={() => setTab(elsewhere.key)}>Show {elsewhere.label}</button>}
+                <button className="btn" onClick={() => setQuery("")}>Clear the search</button>
+              </div>
+            </div>
+          ) : list.length > 0 ? (
             <div className="grid">
               {/* the first cards are on screen straight away, so their pictures load first */}
-              {list.map((a, i) => <AnimationCard key={a.slug} animation={a} isNew={tab === "free" && sort === "new" && i === 0} eager={i < 3} />)}
+              {list.map((a, i) => <AnimationCard key={a.slug} animation={a} isNew={tab === "free" && sort === "new" && !term && i === 0} eager={i < 3} />)}
             </div>
           ) : tab === "favourites" ? (
             <div className="empty px-box">

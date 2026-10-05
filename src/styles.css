@@ -250,7 +250,16 @@ h3 { font-size: 27px; }
 .tab[aria-selected="true"] { background: var(--ink); color: var(--bg); }
 .tab .count { font-size: 18px; background: var(--soft); color: var(--ink); padding: 2px 6px 3px; }
 .tab[aria-selected="true"] .count { background: var(--amber); color: #0E0F12; }
-.sort { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-display); font-size: 21px; color: var(--muted); padding-bottom: 8px; }
+/* Search and sort sit together on the right of the tabs. */
+.tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding-bottom: 8px; }
+.search { display: inline-flex; align-items: center; gap: 8px; background: var(--panel); border: 2px solid var(--edge); padding: 0 8px; color: var(--muted); min-width: 0; }
+.search:focus-within { outline: var(--px) solid var(--cyan); outline-offset: 2px; color: var(--ink); }
+.search input { font-family: var(--font-display); font-size: 21px; line-height: 1; color: var(--ink); background: none; border: 0; outline: 0; padding: 4px 0 5px; width: 190px; min-width: 0; border-radius: 0; -webkit-appearance: none; appearance: none; }
+.search input::placeholder { color: var(--muted); opacity: 1; }
+.search input::-webkit-search-cancel-button { display: none; }                         /* the page has its own clear button */
+.search .clear { border: 0; background: none; color: var(--muted); padding: 6px 2px; display: inline-flex; }
+.search .clear:hover { color: var(--hot); }
+.sort { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-display); font-size: 21px; color: var(--muted); }
 .sort select { font: inherit; color: var(--ink); background: var(--panel); border: 2px solid var(--edge); border-radius: 0; padding: 3px 8px 4px; }
 #tab-panel { display: grid; gap: 18px; }
 
@@ -341,6 +350,9 @@ h3 { font-size: 27px; }
   .btn, button.btn { padding: 10px 14px 11px; font-size: 22px; }
   .tab { font-size: 23px; padding: 9px 9px 10px; }
   .library-head { align-items: flex-start; }
+  .tools { width: 100%; }
+  .search { flex: 1 1 200px; }
+  .search input { width: 100%; font-size: 22px; padding: 7px 0 8px; }
   .card-head h3 { font-size: 30px; }
   .frame-wrap { margin-inline: calc(var(--px) - 8px); }                    /* give the animation a little more width */
   .ticker-set > span { font-size: 20px; }
