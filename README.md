@@ -93,6 +93,14 @@ Save. The card appears at the top of the home page.
 
 ---
 
+## Free and paid
+
+The home page has two tabs. Every animation is **Free** unless its entry says `tier: "paid"`. A paid entry shows its price on the card and gets a page with what the buyer receives and one Buy button that goes to a checkout link (`buyUrl`).
+
+The paid files themselves must not be in this repo's `public/` folder: anything there can be downloaded by anyone. Upload them to the checkout service (Gumroad, Lemon Squeezy, a Stripe Payment Link) and let it deliver them after payment. The fields are described at the top of `src/animations.js`.
+
+---
+
 ## Put one on your board
 
 Each animation page has the steps, and Spidey Transitions ships a full guide: parts, wiring, Arduino IDE set up, the BOOT button trick, and what to do when the screen stays dark. Short version:

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext, useParams } from "react-router-dom";
 import { marked } from "marked";
-import { bySlug, folderOf } from "../animations.js";
+import { bySlug, folderOf, isPaid } from "../animations.js";
 import NotFound from "./NotFound.jsx";
+import PaidPage from "./PaidPage.jsx";
 
 /*
   One animation's page. The animation itself is a complete HTML file in public/animations/<slug>/,
@@ -69,6 +70,7 @@ export default function AnimationPage() {
   }, [a]);
 
   if (!a) return <NotFound />;
+  if (isPaid(a)) return <PaidPage animation={a} />;      // paid animations have their own page: price, what you get, Buy
   const folder = folderOf(a);
 
   return (
@@ -95,6 +97,7 @@ export default function AnimationPage() {
 
       <section className="frame-wrap" aria-label={`${a.title} live preview`}>
         <iframe
+          key={a.slug}
           className="frame"
           src={`${folder}index.html?embed=1&theme=${theme}`}
           style={{ height: frameHeight }}

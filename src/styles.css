@@ -99,6 +99,20 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-c
    5. HOME: THE CARD GRID
    ===================================================================== */
 .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+
+/* The Free / Paid tabs above the cards. The open tab gets the red line under it. */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+.tab { border: 0; border-radius: 0; background: none; padding: 10px 16px 12px; margin-bottom: -1px; border-bottom: 3px solid transparent;
+  font-family: var(--font-display); font-weight: 800; font-size: 20px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.tab:hover { color: var(--ink); border-color: transparent; border-bottom-color: var(--line); }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tab .count { font-family: var(--font-body); font-weight: 500; font-size: 12.5px; letter-spacing: 0; background: var(--panel-strong); color: var(--muted); padding: 1px 8px; border-radius: 999px; margin-left: 4px; vertical-align: 3px; }
+.empty { background: var(--panel); border-radius: 16px; padding: 40px 20px; display: grid; gap: 10px; justify-items: center; text-align: center; }
+.empty .note { max-width: 46ch; }
+.badge.price { left: auto; right: 10px; background: var(--bg); color: var(--ink); }
+.paid-preview { background: var(--bezel); border-radius: 16px; padding: 22px; }
+.paid-preview img { display: block; width: 100%; max-width: 896px; margin: 0 auto; height: auto; image-rendering: pixelated; border-radius: 4px; background: #000; }
+.button[aria-disabled="true"] { opacity: 0.6; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 18px; }
 .card-link { text-decoration: none; color: inherit; display: block; border-radius: 16px; }
 .anim-card { background: var(--panel); border-radius: 16px; overflow: hidden; height: 100%; display: grid; grid-template-rows: auto 1fr; transition: transform 0.15s ease, box-shadow 0.15s ease; }

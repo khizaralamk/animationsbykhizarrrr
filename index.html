@@ -5,10 +5,28 @@
     <!-- maximum-scale and user-scalable switch off pinch zoom on phones and tablets -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="description" content="Animations for 128 by 64 OLED screens, each with a live preview, a download, and an ESP32 sketch where there is one." />
+
+    <!-- How the site looks when its link is shared in a chat or on social media -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="OLED Animations" />
+    <meta property="og:description" content="Animations for 128 by 64 OLED screens. Try them in the browser, download the file, upload the sketch to an ESP32." />
+    <meta property="og:image" content="/animations/spidey-transitions/thumb.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#ffffff" />
+
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="alternate icon" href="/favicon.png" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- Open the connections to the font servers early, so the headings do not wait for them -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" />
+
+    <!-- Apply the saved White / Black choice before anything is drawn, so a Black page never flashes white first -->
+    <script>
+      try { if (localStorage.getItem("abk-theme") === "dark") document.documentElement.dataset.theme = "dark"; } catch (e) {}
+    </script>
     <title>OLED Animations</title>
   </head>
   <body>
