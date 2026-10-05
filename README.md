@@ -92,11 +92,25 @@ Save. The card appears at the top of the home page.
 
 ---
 
+## The backend
+
+Counts, hearts and payments come from a separate project, `oled-backend` (Vercel functions with Supabase and Polar). This site only needs its address:
+
+| Setting | Where | Value |
+| --- | --- | --- |
+| `VITE_API_URL` | Vercel > this site > Environment Variables | The backend's address, for example `https://your-backend.vercel.app` |
+
+It is an address, not a secret. No key ever goes in this site. Without it the site still works: counts are hidden and hearts are kept in the visitor's browser only.
+
+The site publishes its list of animations at `/catalog.json` (written from `src/animations.js` at build time). The backend reads that to know which animations exist.
+
+---
+
 ## Free and paid
 
-The home page has two tabs. Every animation is **Free** unless its entry says `tier: "paid"`. A paid entry shows its price on the card and gets a page with what the buyer receives and one Buy button that goes to a checkout link (`buyUrl`).
+The home page has two tabs. Every animation is **Free** unless its entry says `tier: "paid"`. A paid entry shows its price on the card and gets a page with what the buyer receives and one Buy button. With `polarProductId` set, the button opens Polar's checkout through the backend and the buyer gets their downloads on the `/thanks` page.
 
-The paid files themselves must not be in this repo's `public/` folder: anything there can be downloaded by anyone. Upload them to the checkout service (Gumroad, Lemon Squeezy, a Stripe Payment Link) and let it deliver them after payment. The fields are described at the top of `src/animations.js`.
+The paid files themselves must not be in this repo's `public/` folder: anything there can be downloaded by anyone. Upload them to the private Supabase bucket `paid-animations`, in a folder named after the slug. The backend hands out download links only after payment. The fields are described at the top of `src/animations.js`.
 
 ---
 

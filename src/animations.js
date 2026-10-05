@@ -18,18 +18,21 @@
   Add  tier: "paid"  to an entry and it moves to the Paid tab. A paid entry uses these fields instead of
   files and guides:
     price     what the card and the Buy button show, for example "$5"
-    buyUrl    the checkout link (Gumroad, Lemon Squeezy, a Stripe Payment Link...). Leave it out to show "Coming soon".
+    polarProductId  the product's id in Polar. With it, the Buy button opens Polar's checkout through the backend
+                    and the buyer gets their downloads on the /thanks page. This is the normal way to sell.
+    buyUrl    instead of polarProductId: a plain checkout link to any other service. Leave both out to show "Coming soon".
     includes  a list of short lines: what the buyer gets
     preview   optional: a bigger picture in the folder to show on the page (thumb.png is used otherwise)
   IMPORTANT: do not put a paid animation's index.html or sketch in public/. Everything in public/ can be
-  downloaded by anyone who knows the address. Put only thumb.png (and a preview picture) there, upload the
-  real files to the checkout service, and let it deliver them after payment.
+  downloaded by anyone who knows the address. Put only thumb.png (and a preview picture) there. Upload the
+  real files to the private Supabase bucket "paid-animations", in a folder named after the slug. The backend
+  hands out download links only after payment.
   Example:
     {
       slug: "my-paid-animation", tier: "paid", title: "My Paid Animation",
       blurb: "One or two sentences.", added: "2026-10-05", tags: ["exclusive"],
       screen: "128 x 64 OLED, I2C, 0.96 inch",
-      price: "$5", buyUrl: "https://example.com/checkout",
+      price: "$5", polarProductId: "<the product id from Polar>",
       includes: ["The animation page (one HTML file)", "The ESP32 sketch", "Set up guide"],
     },
 */
