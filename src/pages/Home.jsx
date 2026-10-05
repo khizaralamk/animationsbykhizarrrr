@@ -9,6 +9,7 @@ import HeroScreen from "../components/HeroScreen.jsx";
 import PixelIcon from "../components/PixelIcon.jsx";
 
 const TABS = [
+  { key: "all", label: "All" },
   { key: "free", label: "Free" },
   { key: "paid", label: "Paid" },
   { key: "favourites", label: "Favourites" },
@@ -22,13 +23,13 @@ const SEARCH_DELAY_MS = 250;      // how long the search waits after the last ke
 const TICKER = ["128 x 64 pixels", "1 bit per pixel", "ESP32 ready", "SSD1306 and SH1106", "one HTML file each", "works offline", "free to download"];
 
 /*
-  The home page: a hero with a live OLED, then the library in three tabs (Free, Paid, Favourites)
+  The home page: a hero with a live OLED, then the library in four tabs (All, Free, Paid, Favourites)
   with a sort choice, then the three steps from browser to board.
   The open tab lives in the address (?tab=paid), so it can be linked and survives a refresh.
 */
 export default function Home() {
   const [params, setParams] = useSearchParams();
-  const tab = TABS.some((t) => t.key === params.get("tab")) ? params.get("tab") : "free";
+  const tab = TABS.some((t) => t.key === params.get("tab")) ? params.get("tab") : "all";
   const [sort, setSort] = useState("new");
   const { stats, totals, hearted, live, offerFor } = useSite();
   const root = useRef(null);
@@ -53,6 +54,7 @@ export default function Home() {
     });
   }, [all, term]);
   const lists = useMemo(() => ({
+    all: matches,
     free: matches.filter((a) => !isPaid(a)),
     paid: matches.filter(isPaid),
     favourites: matches.filter((a) => hearted.has(a.slug)),
@@ -90,10 +92,10 @@ export default function Home() {
     return () => mm.revert();
   }, [tab, sort, term]);
 
-  const setTab = (key) => setParams(key === "free" ? {} : { tab: key }, { replace: true });
+  const setTab = (key) => setParams(key === "all" ? {} : { tab: key }, { replace: true });
   const heroList = useMemo(() => { const free = all.filter((a) => !isPaid(a)); return free.length ? free : all; }, [all]);
   // If the search found nothing in this tab but did in another, say where.
-  const elsewhere = term && list.length === 0 ? TABS.find((t) => t.key !== tab && t.key !== "favourites" && lists[t.key].length > 0) : null;
+  const elsewhere = term && list.length === 0 ? TABS.find((t) => t.key !== tab && t.key !== "favourites" && t.key !== "all" && lists[t.key].length > 0) : null;
 
   return (
     <div ref={root} className="home">
@@ -176,14 +178,14 @@ export default function Home() {
           ) : list.length > 0 ? (
             <div className="grid">
               {/* the first cards are on screen straight away, so their pictures load first */}
-              {list.map((a, i) => <AnimationCard key={a.slug} animation={a} isNew={tab === "free" && sort === "new" && !term && i === 0} eager={i < 3} />)}
+              {list.map((a, i) => <AnimationCard key={a.slug} animation={a} isNew={(tab === "all" || tab === "free") && sort === "new" && !term && i === 0} eager={i < 3} />)}
             </div>
           ) : tab === "favourites" ? (
             <div className="empty px-box">
               <PixelIcon name="heartLine" size={34} />
               <h2>No favourites yet</h2>
               <p className="note">Press the heart on any animation and it shows up here, in this browser.</p>
-              <button className="btn" onClick={() => setTab("free")}>Browse the free ones</button>
+              <button className="btn" onClick={() => setTab("all")}>Browse the animations</button>
             </div>
           ) : (
             <div className="empty px-box">

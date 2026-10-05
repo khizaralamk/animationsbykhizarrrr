@@ -22,7 +22,10 @@ export default function AnimationCard({ animation, isNew, eager }) {
         {/* width and height tell the browser the picture's shape before it loads, so the card does not jump */}
         <img src={folderOf(a) + "thumb.png"} alt="" width="512" height="256" loading={eager ? "eager" : "lazy"} decoding="async" />
         {isNew && <span className="tag tag-new">New</span>}
-        {isPaid(a) && <span className="tag tag-price">{now.discount && <s>{now.discount.was}</s>}{now.price}</span>}
+        {/* every card says what it is: Free, or Paid with its price */}
+        {isPaid(a)
+          ? <span className="tag tag-price"><b>Paid</b>{now.discount && <s>{now.discount.was}</s>}{now.price}</span>
+          : <span className="tag tag-free">Free</span>}
         {now.discount && <span className="tag tag-offer">{now.discount.percent}% off, {now.discount.left} left</span>}
       </div>
 

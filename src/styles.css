@@ -284,6 +284,8 @@ h3 { font-size: 27px; }
 .tag-new { left: 0; background: var(--hot); color: var(--hot-ink); }
 .tag-price { right: 0; background: var(--amber); color: #0E0F12; }
 .tag-price s { opacity: 0.6; margin-right: 7px; }
+.tag-price b { font-weight: 400; margin-right: 9px; }
+.tag-free { right: 0; background: var(--cyan); color: #0E0F12; }
 .tag-offer { left: 0; top: auto; bottom: 0; background: var(--hot); color: var(--hot-ink); }
 
 /* The launch offer banner: yellow like the screen's top rows, one square per place. */
