@@ -4,8 +4,8 @@ import { ANIMATIONS } from "./src/animations.js";
 
 /*
   Publishes the list of animations as /catalog.json.
-  The backend reads this file to know which animations exist, which are paid, and which Polar
-  product each paid one is. It is written from src/animations.js, so there is one list to keep.
+  The backend reads this file to know which animations exist, which are paid, and which Paddle
+  price each paid one is. It is written from src/animations.js, so there is one list to keep.
   Only public facts go in it: no prices, no secrets.
 */
 function catalogPlugin() {
@@ -13,7 +13,7 @@ function catalogPlugin() {
     slug: a.slug,
     title: a.title,
     tier: a.tier === "paid" ? "paid" : "free",
-    ...(a.polarProductId ? { polarProductId: a.polarProductId } : {}),
+    ...(a.paddlePriceId ? { paddlePriceId: a.paddlePriceId } : {}),
   })));
   return {
     name: "catalog-json",

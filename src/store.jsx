@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { getStats, getHearts, setHeart, track } from "./api.js";
+import { VISITORS_BASE } from "./site.js";
 
 /*
   THE SITE'S LIVE NUMBERS
@@ -22,14 +23,22 @@ export function SiteProvider({ children }) {
   const [stats, setStats] = useState({});                  // { slug: { views, downloads, copies, hearts } }
   const [totals, setTotals] = useState(null);              // null until the backend answers
   const [hearted, setHearted] = useState(() => new Set(savedHearts()));
+  const [visitors, setVisitors] = useState(null);          // different visitors so far (base + real), null until known
   const seen = useRef(new Set());                          // "slug|kind" already sent this visit
 
   // Load the counts once, then the visitor's hearts from the backend (it wins over this browser's copy).
   useEffect(() => {
     let alive = true;
-    getStats().then((data) => { if (alive && data && data.stats) { setStats(data.stats); setTotals(data.totals); } });
+    // Say "someone opened the site" first, then read the numbers, so a first time visitor is already in the count.
+    // The backend counts a browser once: refreshing or coming back does not add another visitor.
+    track("site", "view").finally(() => {
+      getStats().then((data) => {
+        if (!alive || !data || !data.stats) return;
+        setStats(data.stats); setTotals(data.totals);
+        if (typeof data.visitors === "number") setVisitors(VISITORS_BASE + data.visitors);
+      });
+    });
     getHearts().then((list) => { if (alive && list) setHearted(new Set(list)); });
-    track("site", "view");
     return () => { alive = false; };
   }, []);
 
@@ -67,11 +76,11 @@ export function SiteProvider({ children }) {
   }, []);
 
   const value = useMemo(() => ({
-    stats, totals, hearted, toggleHeart, record,
+    stats, totals, hearted, toggleHeart, record, visitors,
     statsFor: (slug) => stats[slug] || null,
     isHearted: (slug) => hearted.has(slug),
     live: totals !== null,                                  // true once the backend has answered
-  }), [stats, totals, hearted, toggleHeart, record]);
+  }), [stats, totals, hearted, toggleHeart, record, visitors]);
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>;
 }

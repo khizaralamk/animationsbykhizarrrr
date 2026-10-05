@@ -7,6 +7,13 @@ import { SiteProvider } from "./store.jsx";
 import "lenis/dist/lenis.css";
 import "./styles.css";
 import "./cursor.css";
+import { blockInspect } from "./noInspect.js";
+import { loadPaddle } from "./paddle.js";
+
+blockInspect();                                             // right click and the devtools shortcuts are switched off
+
+// A payment link from Paddle arrives as <site>/?_ptxn=txn_... Paddle's script opens the checkout for it by itself.
+if (new URLSearchParams(window.location.search).has("_ptxn")) loadPaddle().catch(() => {});
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

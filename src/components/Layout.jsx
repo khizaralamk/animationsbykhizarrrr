@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import Lenis from "lenis";
 import PixelIcon from "./PixelIcon.jsx";
 import { useSite } from "../store.jsx";
+import { LEGAL_PAGES, SUPPORT_EMAIL } from "../site.js";
 
 /* Reads the saved page look. Storage can be blocked, so every read and write is wrapped. */
 function savedTheme() {
@@ -21,7 +22,7 @@ export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
   const lenis = useRef(null);
-  const { hearted } = useSite();
+  const { hearted, visitors } = useSite();
 
   useEffect(() => {
     if (theme === "dark") document.documentElement.dataset.theme = "dark";
@@ -65,6 +66,12 @@ export default function Layout() {
         <button className="btn small" aria-pressed={theme === "light"} onClick={() => setTheme("light")}><PixelIcon name="sun" size={14} /> White</button>
         <button className="btn small" aria-pressed={theme === "dark"} onClick={() => setTheme("dark")}><PixelIcon name="moon" size={14} /> Black</button>
       </div>
+      {/* How many different people have visited. Shown once the backend has answered. */}
+      {visitors !== null && (
+        <span className="visitors" title="Different visitors so far. Refreshing does not count again.">
+          <PixelIcon name="eye" size={14} /> <b>{visitors.toLocaleString()}</b> visitors
+        </span>
+      )}
     </>
   );
 
@@ -101,7 +108,11 @@ export default function Layout() {
             <Link to="/make-your-own">Make your own</Link>
           </span>
         </div>
-        <p className="note">Every animation is one HTML file you can keep, plus a sketch for an ESP32 where there is one. Counts are anonymous: no names, no emails, no IP addresses are stored.</p>
+        <div className="footer-row">
+          <span className="footer-links small">{LEGAL_PAGES.map((p) => <Link key={p.path} to={"/" + p.path}>{p.title}</Link>)}</span>
+          <a className="footer-mail" href={"mailto:" + SUPPORT_EMAIL}>{SUPPORT_EMAIL}</a>
+        </div>
+        <p className="note">Every animation is one HTML file you can keep, plus a sketch for an ESP32 where there is one. Counts are anonymous: no names and no IP addresses are stored. Payments are handled by Paddle.</p>
       </footer>
     </div>
   );

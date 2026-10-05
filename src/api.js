@@ -61,7 +61,7 @@ export async function getHearts() {
 /* Adds or removes a heart. Returns { hearted, hearts } or null. */
 export const setHeart = (slug, on) => call("/api/heart", { method: "POST", body: { slug, on } });
 
-/* Starts a purchase. Returns { url } to send the visitor to, or { error }. */
+/* Starts a purchase. Returns { transactionId } for Paddle's checkout to open, or { error }. */
 export const startCheckout = (slug) => call("/api/checkout", { method: "POST", body: { slug } });
 
 /* After paying: { status: "paid" | "pending" | "refunded", files? } */

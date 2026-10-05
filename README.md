@@ -94,7 +94,7 @@ Save. The card appears at the top of the home page.
 
 ## The backend
 
-Counts, hearts and payments come from a separate project, `oled-backend` (Vercel functions with Supabase and Polar). This site only needs its address:
+Counts, hearts and payments come from a separate project, `oled-backend` (Vercel functions with Supabase and Paddle). This site only needs its address:
 
 | Setting | Where | Value |
 | --- | --- | --- |
@@ -108,9 +108,15 @@ The site publishes its list of animations at `/catalog.json` (written from `src/
 
 ## Free and paid
 
-The home page has two tabs. Every animation is **Free** unless its entry says `tier: "paid"`. A paid entry shows its price on the card and gets a page with what the buyer receives and one Buy button. With `polarProductId` set, the button opens Polar's checkout through the backend and the buyer gets their downloads on the `/thanks` page.
+The home page has two tabs. Every animation is **Free** unless its entry says `tier: "paid"`. A paid entry shows its price on the card and gets a page with what the buyer receives and one Buy button. With `paddlePriceId` set, the button opens Paddle's checkout and the buyer gets their downloads on the `/thanks` page, which keeps working so they never pay twice. Two more public settings switch the checkout on: `VITE_PADDLE_CLIENT_TOKEN` and `VITE_PADDLE_ENV`.
 
 The paid files themselves must not be in this repo's `public/` folder: anything there can be downloaded by anyone. Upload them to the private Supabase bucket `paid-animations`, in a folder named after the slug. The backend hands out download links only after payment. The fields are described at the top of `src/animations.js`.
+
+---
+
+## Small print pages
+
+Support, Refunds, Terms, Privacy and Licence are markdown files in `public/legal/`. Edit the words there; `{{email}}` is replaced with the address in `src/site.js`. Paddle asks for Terms, Privacy and Refund pages before it approves a site for live payments.
 
 ---
 

@@ -18,9 +18,8 @@
   Add  tier: "paid"  to an entry and it moves to the Paid tab. A paid entry uses these fields instead of
   files and guides:
     price     what the card and the Buy button show, for example "$5"
-    polarProductId  the product's id in Polar. With it, the Buy button opens Polar's checkout through the backend
-                    and the buyer gets their downloads on the /thanks page. This is the normal way to sell.
-    buyUrl    instead of polarProductId: a plain checkout link to any other service. Leave both out to show "Coming soon".
+    paddlePriceId   the price's id in Paddle (it starts with pri_). With it, the Buy button opens Paddle's checkout
+                    and the buyer gets their downloads on the /thanks page. Leave it out to show "Coming soon".
     includes  a list of short lines: what the buyer gets
     preview   optional: a bigger picture in the folder to show on the page (thumb.png is used otherwise)
   IMPORTANT: do not put a paid animation's index.html or sketch in public/. Everything in public/ can be
@@ -32,7 +31,7 @@
       slug: "my-paid-animation", tier: "paid", title: "My Paid Animation",
       blurb: "One or two sentences.", added: "2026-10-05", tags: ["exclusive"],
       screen: "128 x 64 OLED, I2C, 0.96 inch",
-      price: "$5", polarProductId: "<the product id from Polar>",
+      price: "$5", paddlePriceId: "pri_...",
       includes: ["The animation page (one HTML file)", "The ESP32 sketch", "Set up guide"],
     },
 */

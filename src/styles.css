@@ -169,6 +169,11 @@ h3 { font-size: 27px; }
 .nav-link.active { box-shadow: inset 0 calc(var(--px) * -1) 0 0 var(--hot); }
 .pill { font-family: var(--font-display); font-size: 17px; line-height: 1; background: var(--hot); color: var(--hot-ink); padding: 3px 6px; }
 .theme-switch { display: flex; gap: 2px; align-items: center; margin-left: 8px; }
+/* The visitor count at the right end of the top bar. */
+.visitors { display: inline-flex; align-items: center; gap: 7px; margin-left: 8px; padding: 6px 10px 7px; background: var(--ink); color: var(--bg);
+  font-family: var(--font-display); font-size: 20px; line-height: 1; white-space: nowrap; }
+.visitors b { font-weight: 400; color: var(--amber); }
+.drawer .visitors { margin: 12px 0 0; justify-content: center; font-size: 22px; padding: 10px; }
 
 /* The two line menu button. Only shown on small screens. */
 .menu-btn { display: none; width: 44px; height: 44px; padding: 0; position: relative; flex: 0 0 auto; border: 0; background: var(--panel); margin: var(--px);
@@ -197,6 +202,9 @@ h3 { font-size: 27px; }
 .footer-links { display: flex; flex-wrap: wrap; gap: 4px 18px; font-family: var(--font-display); font-size: 22px; }
 .footer-links a { text-decoration: none; }
 .footer-links a:hover { background: var(--amber); color: #0E0F12; }
+.footer-links.small { font-size: 19px; color: var(--muted); }
+.footer-mail { font-size: 14.5px; color: var(--muted); }
+.footer-mail:hover { color: var(--ink); }
 
 /* ---------------------------------------------------------------------
    5. HOME
@@ -307,6 +315,9 @@ h3 { font-size: 27px; }
 .frame { display: block; width: 100%; border: 0; background: var(--panel); }           /* height is set from the embedded page */
 .paid-preview { --e: var(--edge); background: var(--glass); padding: 22px; }
 .paid-preview img { display: block; width: 100%; max-width: 896px; margin: 0 auto; height: auto; image-rendering: pixelated; background: #000; }
+/* "Keep this page" on the download page: the buyer's way back to their files */
+.keep { --e: var(--edge); padding: 18px 20px; display: grid; gap: 10px; max-width: 76ch; }
+.keep h2 { font-size: 30px; }
 .gets { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .gets li { display: flex; align-items: center; gap: 10px; }
 .gets .px-icon { color: var(--hot); }
