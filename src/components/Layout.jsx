@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 
-const REPO = "https://github.com/KhizarAlam20/animationsbykhizarrrr";
-
 /* Reads the saved page look. Storage can be blocked, so every read and write is wrapped. */
 function savedTheme() {
   try { return localStorage.getItem("abk-theme") || "light"; } catch { return "light"; }
@@ -38,7 +36,6 @@ export default function Layout() {
   const navItems = (
     <>
       <Link className="button" to="/make-your-own">Make your own</Link>
-      <a className="button" href={REPO} target="_blank" rel="noopener">GitHub</a>
       <div className="theme-switch" role="group" aria-label="Page look">
         <span className="label">Page</span>
         <button aria-pressed={theme === "light"} onClick={() => setTheme("light")}>White</button>
@@ -72,9 +69,7 @@ export default function Layout() {
       <Outlet context={{ theme }} />
 
       <footer>
-        <p>Every animation is one HTML file you can keep, plus a sketch for an ESP32 where there is one.</p>
-        <p>The code is on <a href={REPO} target="_blank" rel="noopener">GitHub</a>. If it helped you, please drop a star on the repo.</p>
-      </footer>
+        <p>Every animation is one HTML file you can keep, plus a sketch for an ESP32 where there is one.</p>      </footer>
     </div>
   );
 }

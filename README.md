@@ -9,7 +9,6 @@
 [![React](https://img.shields.io/badge/React-18-20232a?logo=react&logoColor=61dafb)](https://react.dev)
 [![Vite](https://img.shields.io/badge/Vite-6-646cff?logo=vite&logoColor=white)](https://vite.dev)
 [![ESP32](https://img.shields.io/badge/ESP32-Arduino%20IDE-e7352c?logo=arduino&logoColor=white)](https://www.arduino.cc)
-[![Stars](https://img.shields.io/github/stars/KhizarAlam20/animationsbykhizarrrr?style=social)](https://github.com/KhizarAlam20/animationsbykhizarrrr/stargazers)
 
 </div>
 
@@ -113,11 +112,3 @@ OLED SDA  ->  GPIO 25
 ```
 
 Press **Copy the complete sketch with my settings** on the animation, paste into an empty Arduino sketch, upload.
-
----
-
-<div align="center">
-
-If this helped you, **drop a star on the repo.** It helps more people find it.
-
-</div>

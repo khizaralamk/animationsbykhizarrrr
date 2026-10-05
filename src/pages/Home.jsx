@@ -40,6 +40,9 @@ export default function Home() {
         </div>
 
         <div id="tab-panel" role="tabpanel" aria-labelledby={"tab-" + tab}>
+          {tab === "paid" && (
+            <p className="licence"><b>Pay once, use it anywhere.</b> When you buy an animation you can use it in commercial products however you want.</p>
+          )}
           {list.length > 0 ? (
             <div className="grid">
               {/* the first two cards are on screen straight away, so their pictures load first */}

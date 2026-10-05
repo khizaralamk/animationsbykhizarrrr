@@ -31,6 +31,7 @@ export default function PaidPage({ animation }) {
             : <span className="button primary" aria-disabled="true">Coming soon, {a.price}</span>}
           <span className="note">Payment and download happen on the checkout page. You get the files straight after paying.</span>
         </div>
+        <p className="licence"><b>Pay once, use it anywhere.</b> When you buy this animation you can use it in commercial products however you want.</p>
       </header>
 
       <section className="paid-preview" aria-label={`${a.title} preview`}>
