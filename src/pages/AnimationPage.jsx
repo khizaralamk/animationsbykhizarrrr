@@ -51,7 +51,7 @@ export default function AnimationPage() {
 
   useEffect(() => {
     document.title = a ? `${a.title} | OLED Animations` : "Not found | OLED Animations";
-    if (a && !isPaid(a)) record(a.slug, "view");
+    if (a) record(a.slug, "view");
   }, [a, record]);
 
   // The embedded page sends { abkHeight } whenever its size changes.

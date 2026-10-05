@@ -4,6 +4,7 @@ import { getPurchase, hasBackend } from "../api.js";
 import { bySlug } from "../animations.js";
 import { rememberPurchase } from "../paddle.js";
 import { SUPPORT_EMAIL } from "../site.js";
+import { useSite } from "../store.jsx";
 import PixelIcon from "../components/PixelIcon.jsx";
 
 /*
@@ -42,7 +43,8 @@ export default function Thanks() {
   const checkoutId = params.get("checkout_id") || "";
   const [state, setState] = useState({ status: checkoutId && hasBackend ? "checking" : "missing" });
   const [copied, setCopied] = useState(false);
-  const [autoStarted, setAutoStarted] = useState(false);   // true when this visit kicked off the zip download by itself
+  const { record } = useSite();
+  const [autoStarted, setAutoStarted] = useState(false);  // true when this visit kicked off the zip download by itself
 
   useEffect(() => {
     document.title = "Your downloads | OLED Animations";
@@ -67,7 +69,7 @@ export default function Thanks() {
         setState(res);
         // The first time this browser sees the payment confirmed, the zip starts downloading by itself,
         // so the buyer has a copy on their computer even if they close everything right away.
-        if (res.zip && !alreadyAutoDownloaded(checkoutId)) { startDownload(res.zip.url); markAutoDownloaded(checkoutId); setAutoStarted(true); }
+        if (res.zip && !alreadyAutoDownloaded(checkoutId)) { startDownload(res.zip.url); markAutoDownloaded(checkoutId); setAutoStarted(true); record(res.slug, "download"); }
         return;
       }
       if (res && res.status === "refunded") { setState(res); return; }
@@ -77,8 +79,10 @@ export default function Thanks() {
     }
     ask();
     return () => { alive = false; if (timer) clearTimeout(timer); };
-  }, [checkoutId]);
+  }, [checkoutId, record]);
 
+  // A click on any download button counts as a download of this animation (once per visit).
+  const countDownload = () => { if (state.slug) record(state.slug, "download"); };
   const animation = state.slug ? bySlug(state.slug) : null;
   const copyLink = () => navigator.clipboard.writeText(window.location.href).then(() => setCopied(true), () => setCopied(false));
 
@@ -97,7 +101,7 @@ export default function Thanks() {
           {state.zip ? (
             <>
               <div className="actions">
-                <a className="btn primary" href={state.zip.url}><PixelIcon name="download" size={14} /> Download everything (.zip)</a>
+                <a className="btn primary" href={state.zip.url} onClick={countDownload}><PixelIcon name="download" size={14} /> Download everything (.zip)</a>
               </div>
               <p className="note" aria-live="polite">
                 {autoStarted
@@ -108,14 +112,14 @@ export default function Thanks() {
                 <details className="singles">
                   <summary>Or download one file at a time</summary>
                   <div className="actions">
-                    {state.files.map((f) => <a key={f.name} className="btn small" href={f.url}><PixelIcon name="download" size={13} /> {f.name}</a>)}
+                    {state.files.map((f) => <a key={f.name} className="btn small" href={f.url} onClick={countDownload}><PixelIcon name="download" size={13} /> {f.name}</a>)}
                   </div>
                 </details>
               )}
             </>
           ) : state.files && state.files.length > 0 ? (
             <div className="actions">
-              {state.files.map((f) => <a key={f.name} className="btn primary" href={f.url}><PixelIcon name="download" size={14} /> {f.name}</a>)}
+              {state.files.map((f) => <a key={f.name} className="btn primary" href={f.url} onClick={countDownload}><PixelIcon name="download" size={14} /> {f.name}</a>)}
             </div>
           ) : (
             <p className="note warn">Your payment went through, but the files are not uploaded yet. Reload this page in a few minutes, or write to {SUPPORT_EMAIL}.</p>
