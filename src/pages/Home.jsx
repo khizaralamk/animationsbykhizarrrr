@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import gsap from "gsap";
-import { newestFirst, isPaid } from "../animations.js";
+import { newestFirst, isPaid, priceNow } from "../animations.js";
+import OfferBanner from "../components/OfferBanner.jsx";
 import { useSite, compact } from "../store.jsx";
 import AnimationCard from "../components/AnimationCard.jsx";
 import HeroScreen from "../components/HeroScreen.jsx";
@@ -29,7 +30,7 @@ export default function Home() {
   const [params, setParams] = useSearchParams();
   const tab = TABS.some((t) => t.key === params.get("tab")) ? params.get("tab") : "free";
   const [sort, setSort] = useState("new");
-  const { stats, totals, hearted, live } = useSite();
+  const { stats, totals, hearted, live, offerFor } = useSite();
   const root = useRef(null);
 
   // Search. "query" is what is in the box right now; "term" follows it a moment later (debouncing),
@@ -152,6 +153,10 @@ export default function Home() {
         </div>
 
         <div id="tab-panel" role="tabpanel" aria-labelledby={"tab-" + tab}>
+          {tab === "paid" && lists.paid.map((a) => {
+            const now = priceNow(a, offerFor(a.slug));
+            return <OfferBanner key={a.slug} discount={now.discount} price={now.price} title={a.title} />;
+          })}
           {tab === "paid" && (
             <p className="licence"><b>Pay once, use it anywhere.</b> When you buy an animation you can use it in commercial products however you want.</p>
           )}

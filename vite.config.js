@@ -1,6 +1,9 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
-import { ANIMATIONS } from "./src/animations.js";
+
+// The list of animations reads its Paddle price ids from VITE_PRICE_... environment variables. This file
+// runs before Vite has read the .env files, so they are read here first and the list is loaded after.
+let ANIMATIONS = [];
 
 /*
   Publishes the list of animations as /catalog.json.
@@ -14,6 +17,7 @@ function catalogPlugin() {
     title: a.title,
     tier: a.tier === "paid" ? "paid" : "free",
     ...(a.paddlePriceId ? { paddlePriceId: a.paddlePriceId } : {}),
+    ...(a.launch ? { launch: { paddlePriceId: a.launch.paddlePriceId, limit: a.launch.limit } } : {}),
   })));
   return {
     name: "catalog-json",
@@ -30,7 +34,12 @@ function catalogPlugin() {
 }
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react(), catalogPlugin()],
-  server: { port: 5173, open: false },
+export default defineConfig(async ({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "VITE_");
+  for (const [name, value] of Object.entries(env)) if (name.startsWith("VITE_PRICE_")) process.env[name] = value;
+  ({ ANIMATIONS } = await import("./src/animations.js"));
+  return {
+    plugins: [react(), catalogPlugin()],
+    server: { port: 5173, open: false },
+  };
 });

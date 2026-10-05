@@ -16,24 +16,60 @@ import PixelIcon from "../components/PixelIcon.jsx";
   fresh links without paying again. The browser also remembers it, so the animation's own page shows
   "You own this".
 */
-const ASK_EVERY_MS = 2500, GIVE_UP_AFTER = 24;
+const ASK_EVERY_MS = 1500, GIVE_UP_AFTER = 40;
+
+/*
+  Starting a download without a click. The link is opened in a hidden frame: the storage service
+  answers with "this is a file to save", so the browser saves it and the page stays where it is.
+  It works the same in Chrome, Edge, Firefox and Safari, on Windows, Mac and Linux.
+  A browser may still refuse a download the visitor did not click for, which is why the button stays.
+*/
+function startDownload(url) {
+  const frame = document.createElement("iframe");
+  frame.style.display = "none";
+  frame.src = url;
+  document.body.appendChild(frame);
+  setTimeout(() => frame.remove(), 60000);
+}
+/* The automatic download happens once per purchase per browser, not on every refresh. */
+const AUTO_KEY = "abk-auto-downloaded";
+function autoList() { try { const v = JSON.parse(localStorage.getItem(AUTO_KEY) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } }
+const alreadyAutoDownloaded = (id) => autoList().includes(id);
+function markAutoDownloaded(id) { try { localStorage.setItem(AUTO_KEY, JSON.stringify([...autoList(), id].slice(-50))); } catch { /* fine */ } }
 
 export default function Thanks() {
   const [params] = useSearchParams();
   const checkoutId = params.get("checkout_id") || "";
   const [state, setState] = useState({ status: checkoutId && hasBackend ? "checking" : "missing" });
   const [copied, setCopied] = useState(false);
+  const [autoStarted, setAutoStarted] = useState(false);   // true when this visit kicked off the zip download by itself
 
   useEffect(() => {
     document.title = "Your downloads | OLED Animations";
     if (!checkoutId || !hasBackend) return;
-    let alive = true, tries = 0, timer = null;
+    let alive = true, tries = 0, offline = 0, timer = null;
 
     async function ask() {
       const res = await getPurchase(checkoutId);
       if (!alive) return;
       tries++;
-      if (res && res.status === "paid") { rememberPurchase(res.slug, checkoutId); setState(res); return; }
+      // No answer at all means the server could not be reached. That says nothing about the payment,
+      // so the page says so after a few quick tries instead of waiting a minute and blaming the payment.
+      if (!res) {
+        offline++;
+        if (offline >= 3) { setState({ status: "unreachable" }); return; }
+        timer = setTimeout(ask, 1000);
+        return;
+      }
+      offline = 0;
+      if (res && res.status === "paid") {
+        rememberPurchase(res.slug, checkoutId);
+        setState(res);
+        // The first time this browser sees the payment confirmed, the zip starts downloading by itself,
+        // so the buyer has a copy on their computer even if they close everything right away.
+        if (res.zip && !alreadyAutoDownloaded(checkoutId)) { startDownload(res.zip.url); markAutoDownloaded(checkoutId); setAutoStarted(true); }
+        return;
+      }
       if (res && res.status === "refunded") { setState(res); return; }
       if (res && res.error) { setState({ status: "problem", message: res.error }); return; }
       if (tries >= GIVE_UP_AFTER) { setState({ status: "slow" }); return; }
@@ -57,8 +93,27 @@ export default function Thanks() {
 
         {state.status === "paid" && (<>
           <h1>Thank you</h1>
-          <p className="lead">{animation ? `${animation.title} is yours.` : "Your purchase is confirmed."} Download your files below.</p>
-          {state.files && state.files.length > 0 ? (
+          <p className="lead">{animation ? `${animation.title} is yours.` : "Your purchase is confirmed."} {state.zip ? "Everything is in one zip file." : "Download your files below."}</p>
+          {state.zip ? (
+            <>
+              <div className="actions">
+                <a className="btn primary" href={state.zip.url}><PixelIcon name="download" size={14} /> Download everything (.zip)</a>
+              </div>
+              <p className="note" aria-live="polite">
+                {autoStarted
+                  ? `Your download has started: ${state.zip.name}. Look in your Downloads folder. If nothing happened, your browser blocked it; press the button above.`
+                  : `The file is called ${state.zip.name}. It opens on Windows, Mac and Linux with a double click.`}
+              </p>
+              {state.files && state.files.length > 0 && (
+                <details className="singles">
+                  <summary>Or download one file at a time</summary>
+                  <div className="actions">
+                    {state.files.map((f) => <a key={f.name} className="btn small" href={f.url}><PixelIcon name="download" size={13} /> {f.name}</a>)}
+                  </div>
+                </details>
+              )}
+            </>
+          ) : state.files && state.files.length > 0 ? (
             <div className="actions">
               {state.files.map((f) => <a key={f.name} className="btn primary" href={f.url}><PixelIcon name="download" size={14} /> {f.name}</a>)}
             </div>
@@ -87,6 +142,12 @@ export default function Thanks() {
           <p className="lead">The payment has not been confirmed yet. If you paid, nothing is lost and you will not be charged twice: this address stays valid. Reload the page in a minute.</p>
           <div className="actions"><button className="btn primary" onClick={() => window.location.reload()}>Check again</button></div>
           <p className="note">Still stuck after a few minutes? Write to {SUPPORT_EMAIL} with your Paddle receipt.</p>
+        </>)}
+
+        {state.status === "unreachable" && (<>
+          <h1>Cannot reach the server</h1>
+          <p className="lead">This is a connection problem, not a payment problem. If you paid, your purchase is safe and you will not be charged twice. Try again in a moment.</p>
+          <div className="actions"><button className="btn primary" onClick={() => window.location.reload()}>Try again</button></div>
         </>)}
 
         {state.status === "problem" && (<>

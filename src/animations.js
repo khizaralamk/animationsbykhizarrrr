@@ -31,11 +31,42 @@
       slug: "my-paid-animation", tier: "paid", title: "My Paid Animation",
       blurb: "One or two sentences.", added: "2026-10-05", tags: ["exclusive"],
       screen: "128 x 64 OLED, I2C, 0.96 inch",
-      price: "$5", paddlePriceId: "pri_...",
+      price: "$5", paddlePriceId: fromEnv("VITE_PRICE_MY_PAID_ANIMATION"),
       includes: ["The animation page (one HTML file)", "The ESP32 sketch", "Set up guide"],
     },
+
+  PRICE IDS ARE NOT WRITTEN IN THIS FILE
+  A Paddle price id comes from an environment variable, named with fromEnv("VITE_PRICE_...").
+  On your PC the values are in .env.development.local (sandbox ids, for test cards). On Vercel they are
+  in the site's Environment Variables (live ids, for real money). If a variable is missing, the
+  animation simply shows "Coming soon".
 */
+const fromEnv = (name) => (import.meta.env ? import.meta.env[name] : typeof process !== "undefined" ? process.env[name] : "") || "";
+
 export const ANIMATIONS = [
+  {
+    // PAID. Its real files are in the private bucket paid-animations/prison-realm/, not on this site.
+    slug: "prison-realm",
+    tier: "paid",
+    title: "Prison Realm",
+    blurb: "The Prison Realm cube with nine living eyes. Each eye blinks on its own beat and they all glance around together. Fill or Line style.",
+    added: "2026-10-05",
+    tags: ["blinking eyes", "exclusive", "ESP32 sketch"],
+    screen: "128 x 64 OLED, I2C, 0.96 inch",
+    price: "$6.99",              // what the card and the Buy button show. The real price is the one set in Paddle.
+    paddlePriceId: fromEnv("VITE_PRICE_PRISON_REALM"),
+    // Launch offer: the first <limit> buyers pay the cheaper price, then it goes back to the normal one by itself.
+    // The backend counts the sales and picks the price. Delete this block to end the offer early.
+    launch: { price: "$1", paddlePriceId: fromEnv("VITE_PRICE_PRISON_REALM_LAUNCH"), limit: 10 },
+    preview: "preview.gif",      // a short loop of the animation, shown on its page
+    includes: [
+      "The preview page: one HTML file with Fill and Line styles, blink and glance controls, and an Arduino bitmap copy box",
+      "The complete ESP32 sketch in one file, with the cube and all nine eyes inside",
+      "A step by step guide: wiring, Arduino IDE set up, every setting, upload and troubleshooting",
+      "One zip with everything, named prison-realm-oled-animation.zip, that downloads by itself after payment",
+      "Commercial use: pay once, use it in your products however you want",
+    ],
+  },
   {
     slug: "nah-id-win-2",
     title: "Nah, I'd Win 2",
@@ -116,4 +147,17 @@ export const bySlug = (slug) => ANIMATIONS.find((a) => a.slug === slug);
 // Newest first. Entries added on the same day keep the order they have in the list above.
 export const newestFirst = () => [...ANIMATIONS].sort((a, b) => b.added.localeCompare(a.added));
 export const isPaid = (a) => a.tier === "paid";
+
+/*
+  What a paid animation costs right now.
+  "offer" is what the backend says about its launch offer: { limit, left }, or nothing if it has none
+  or the backend has not answered yet. While places are left, the cheaper price shows with the
+  normal one crossed out. Otherwise it is just the normal price.
+*/
+const amount = (text) => parseFloat(String(text).replace(/[^0-9.]/g, ""));
+export function priceNow(a, offer) {
+  if (!a.launch || !offer || !(offer.left > 0)) return { price: a.price, discount: null };
+  const percent = Math.round((1 - amount(a.launch.price) / amount(a.price)) * 100);
+  return { price: a.launch.price, discount: { was: a.price, percent, limit: offer.limit, left: offer.left } };
+}
 export const folderOf = (a) => `/animations/${a.slug}/`;

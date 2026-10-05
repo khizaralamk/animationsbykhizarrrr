@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
-import { folderOf } from "../animations.js";
+import { folderOf, priceNow } from "../animations.js";
+import { useSite } from "../store.jsx";
+import OfferBanner from "../components/OfferBanner.jsx";
 import { startCheckout, hasBackend } from "../api.js";
 import { openCheckout, hasPaddle, ownedCheckoutId } from "../paddle.js";
 import PixelIcon from "../components/PixelIcon.jsx";
@@ -22,10 +24,12 @@ export default function PaidPage({ animation }) {
   const a = animation;
   const folder = folderOf(a);
   const { theme } = useOutletContext();
+  const { offerFor } = useSite();
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState("");
   const owned = ownedCheckoutId(a.slug);                    // set when this browser has bought it before
   const forSale = Boolean(a.paddlePriceId && hasBackend && hasPaddle);
+  const now = priceNow(a, offerFor(a.slug));                // the launch price while places are left, else the normal one
 
   useEffect(() => { document.title = `${a.title} | OLED Animations`; }, [a]);
 
@@ -55,11 +59,13 @@ export default function PaidPage({ animation }) {
         <p className="lead">{a.blurb}</p>
         <ul className="chips"><li><PixelIcon name="screen" size={14} /> {a.screen}</li></ul>
 
+        {!owned && forSale && <OfferBanner discount={now.discount} price={now.price} />}
+
         <div className="actions">
           {owned
             ? <Link className="btn primary" to={`/thanks?checkout_id=${encodeURIComponent(owned)}`}><PixelIcon name="download" size={14} /> You own this. Get your files</Link>
             : forSale
-              ? <button type="button" className="btn primary" onClick={buy} disabled={busy}><PixelIcon name="cart" size={14} /> {busy ? "Opening checkout..." : `Buy for ${a.price}`}</button>
+              ? <button type="button" className="btn primary" onClick={buy} disabled={busy}><PixelIcon name="cart" size={14} /> {busy ? "Opening checkout..." : <>Buy for {now.price}{now.discount && <s className="was">{now.discount.was}</s>}</>}</button>
               : <span className="btn primary" aria-disabled="true"><PixelIcon name="lock" size={14} /> Coming soon, {a.price}</span>}
           <HeartButton slug={a.slug} title={a.title} className="btn" />
         </div>

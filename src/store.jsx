@@ -24,7 +24,8 @@ export function SiteProvider({ children }) {
   const [totals, setTotals] = useState(null);              // null until the backend answers
   const [hearted, setHearted] = useState(() => new Set(savedHearts()));
   const [visitors, setVisitors] = useState(null);          // different visitors so far (base + real), null until known
-  const seen = useRef(new Set());                          // "slug|kind" already sent this visit
+  const [offers, setOffers] = useState({});                // launch offers: { slug: { limit, left } }
+  const seen = useRef(new Set());                         // "slug|kind" already sent this visit
 
   // Load the counts once, then the visitor's hearts from the backend (it wins over this browser's copy).
   useEffect(() => {
@@ -36,6 +37,7 @@ export function SiteProvider({ children }) {
         if (!alive || !data || !data.stats) return;
         setStats(data.stats); setTotals(data.totals);
         if (typeof data.visitors === "number") setVisitors(VISITORS_BASE + data.visitors);
+        if (data.offers) setOffers(data.offers);
       });
     });
     getHearts().then((list) => { if (alive && list) setHearted(new Set(list)); });
@@ -78,9 +80,10 @@ export function SiteProvider({ children }) {
   const value = useMemo(() => ({
     stats, totals, hearted, toggleHeart, record, visitors,
     statsFor: (slug) => stats[slug] || null,
+    offerFor: (slug) => offers[slug] || null,
     isHearted: (slug) => hearted.has(slug),
     live: totals !== null,                                  // true once the backend has answered
-  }), [stats, totals, hearted, toggleHeart, record, visitors]);
+  }), [stats, totals, hearted, toggleHeart, record, visitors, offers]);
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>;
 }

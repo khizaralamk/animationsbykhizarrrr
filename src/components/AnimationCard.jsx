@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { folderOf, isPaid } from "../animations.js";
+import { folderOf, isPaid, priceNow } from "../animations.js";
 import { useSite, compact } from "../store.jsx";
 import PixelIcon from "./PixelIcon.jsx";
 import HeartButton from "./HeartButton.jsx";
@@ -12,8 +12,9 @@ const dateText = (iso) => new Date(iso + "T00:00:00").toLocaleDateString("en-GB"
 */
 export default function AnimationCard({ animation, isNew, eager }) {
   const a = animation;
-  const { statsFor, live } = useSite();
+  const { statsFor, offerFor, live } = useSite();
   const s = statsFor(a.slug);
+  const now = priceNow(a, offerFor(a.slug));
 
   return (
     <article className="card px-box" data-reveal>
@@ -21,7 +22,8 @@ export default function AnimationCard({ animation, isNew, eager }) {
         {/* width and height tell the browser the picture's shape before it loads, so the card does not jump */}
         <img src={folderOf(a) + "thumb.png"} alt="" width="512" height="256" loading={eager ? "eager" : "lazy"} decoding="async" />
         {isNew && <span className="tag tag-new">New</span>}
-        {isPaid(a) && <span className="tag tag-price">{a.price}</span>}
+        {isPaid(a) && <span className="tag tag-price">{now.discount && <s>{now.discount.was}</s>}{now.price}</span>}
+        {now.discount && <span className="tag tag-offer">{now.discount.percent}% off, {now.discount.left} left</span>}
       </div>
 
       <div className="card-body">
