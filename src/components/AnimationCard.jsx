@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { folderOf, isPaid, priceNow } from "../animations.js";
 import { useSite, compact } from "../store.jsx";
@@ -16,11 +17,23 @@ export default function AnimationCard({ animation, isNew, eager }) {
   const s = statsFor(a.slug);
   const now = priceNow(a, offerFor(a.slug));
 
+  // The card's screen plays the animation's short loop, but only while the card is on screen, and never
+  // for visitors who asked their device for less motion. Until then (and if there is no loop) it shows the still picture.
+  const thumb = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  useEffect(() => {
+    if (!a.preview || !thumb.current || !("IntersectionObserver" in window)) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const watch = new IntersectionObserver(([entry]) => setPlaying(entry.isIntersecting), { rootMargin: "80px" });
+    watch.observe(thumb.current);
+    return () => watch.disconnect();
+  }, [a.preview]);
+
   return (
     <article className="card px-box" data-reveal>
-      <div className="card-thumb">
+      <div className="card-thumb" ref={thumb}>
         {/* width and height tell the browser the picture's shape before it loads, so the card does not jump */}
-        <img src={folderOf(a) + "thumb.png"} alt="" width="512" height="256" loading={eager ? "eager" : "lazy"} decoding="async" />
+        <img src={folderOf(a) + (playing ? a.preview : "thumb.png")} alt="" width="512" height="256" loading={eager ? "eager" : "lazy"} decoding="async" />
         {isNew && <span className="tag tag-new">New</span>}
         {/* every card says what it is: Free, or Paid with its price */}
         {isPaid(a)
@@ -38,12 +51,9 @@ export default function AnimationCard({ animation, isNew, eager }) {
 
         <div className="card-foot">
           <span className="stats">
-            {live && (
-              <>
-                <span title="Downloads"><PixelIcon name="download" size={13} /> {compact(s ? s.downloads : 0)}</span>
-                <span title="Hearts"><PixelIcon name="heart" size={13} /> {compact(s ? s.hearts : 0)}</span>
-              </>
-            )}
+            {/* the icons hold their place from the start, so nothing jumps when the numbers arrive */}
+            <span title="Downloads"><PixelIcon name="download" size={13} /> <b className={live ? "in" : "wait"}>{compact(s ? s.downloads : 0)}</b></span>
+            <span title="Hearts"><PixelIcon name="heart" size={13} /> <b className={live ? "in" : "wait"}>{compact(s ? s.hearts : 0)}</b></span>
           </span>
           <span className="date">{dateText(a.added)}</span>
         </div>

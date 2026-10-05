@@ -297,7 +297,8 @@ h3 { font-size: 27px; }
 .offer-bar i { width: 14px; height: 14px; background: #0E0F12; }
 .offer-bar i.gone { background: transparent; box-shadow: inset 0 0 0 2px #0E0F12; opacity: 0.45; }
 .btn .was { opacity: 0.7; margin-left: 8px; }
-.card-body { padding: 14px 16px 14px; display: grid; gap: 8px; align-content: start; }
+/* title, text, then the numbers: the text row takes the spare height, so the numbers sit on the bottom edge of every card */
+.card-body { padding: 14px 16px 14px; display: grid; gap: 8px; grid-template-rows: auto 1fr auto; }
 .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .card-head h3 { font-size: 32px; }
 .card-link { text-decoration: none; }
@@ -306,6 +307,13 @@ h3 { font-size: 27px; }
 .card-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 4px; font-family: var(--font-display); font-size: 19px; line-height: 1; color: var(--muted); }
 .stats { display: inline-flex; gap: 14px; }
 .stats span { display: inline-flex; align-items: center; gap: 5px; }
+/* The icons are always there. Until the real numbers arrive a 0 pulses in their place, then the number fades in. */
+.stats b { font-weight: 400; min-width: 1ch; }
+.stats b.wait { animation: num-wait 0.9s ease-in-out infinite alternate; }
+.stats b.in { animation: num-in 0.35s ease-out; }
+@keyframes num-wait { from { opacity: 0.15; } to { opacity: 0.6; } }
+@keyframes num-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .stats b.wait { animation: none; opacity: 0.4; } .stats b.in { animation: none; } }
 
 .empty { padding: 44px 20px; display: grid; gap: 12px; justify-items: center; text-align: center; color: var(--ink); }
 .empty .note { max-width: 46ch; }

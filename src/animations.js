@@ -21,7 +21,8 @@
     paddlePriceId   the price's id in Paddle (it starts with pri_). With it, the Buy button opens Paddle's checkout
                     and the buyer gets their downloads on the /thanks page. Leave it out to show "Coming soon".
     includes  a list of short lines: what the buyer gets
-    preview   optional: a bigger picture in the folder to show on the page (thumb.png is used otherwise)
+    preview   optional: a short moving loop in the folder (preview.gif). The card plays it while it is on screen.
+              Free animations can have one too. Without it the card shows thumb.png, which every animation needs.
   IMPORTANT: do not put a paid animation's index.html or sketch in public/. Everything in public/ can be
   downloaded by anyone who knows the address. Put only thumb.png (and a preview picture) there. Upload the
   real files to the private Supabase bucket "paid-animations", in a folder named after the slug. The backend
@@ -69,6 +70,7 @@ export const ANIMATIONS = [
   },
   {
     slug: "nah-id-win-2",
+    preview: "preview.gif",
     title: "Nah, I'd Win 2",
     blurb: "The blindfolded head with the speech bubble beside it, traced for the full screen, with a shine that slides across every few seconds. Two layouts, Line or Fill.",
     added: "2026-10-05",
@@ -84,6 +86,7 @@ export const ANIMATIONS = [
   },
   {
     slug: "nah-id-win",
+    preview: "preview.gif",
     title: "Nah, I'd Win",
     blurb: "The speech bubble on its own, traced pixel by pixel, with a shine that slides across every few seconds. Tall or wide, Line or Fill.",
     added: "2026-10-05",
@@ -99,6 +102,7 @@ export const ANIMATIONS = [
   },
   {
     slug: "the-boogley",
+    preview: "preview.gif",
     title: "The Boogley",
     blurb: "A dancing character traced from a 15 second video, 151 frames, one every tenth of a second. Pick a style and a speed, then copy the ESP32 sketch with the frames already inside.",
     added: "2026-10-04",
@@ -114,6 +118,7 @@ export const ANIMATIONS = [
   },
   {
     slug: "spidey-transitions",
+    preview: "preview.gif",
     title: "Spidey Transitions",
     blurb: "Three spider emblems traced into 1 bit pixels. Turn them, spin them, or run the glitch show, then copy the ESP32 sketch with your settings already filled in.",
     added: "2026-10-03",
@@ -131,6 +136,7 @@ export const ANIMATIONS = [
   },
   {
     slug: "eye-lab",
+    preview: "preview.gif",
     title: "Eye Lab",
     blurb: "A pair of pill shaped eyes that look around, blink and change emotion. Pixel exact at the board's own frame rate.",
     added: "2026-09-24",
