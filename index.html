@@ -18,6 +18,24 @@
     <link rel="alternate icon" href="/favicon.png" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
+    <!--
+      Start loading the live numbers (counts, visitors, launch offers) now, while the page's code is
+      still downloading, so they do not wait for it. src/api.js picks up this answer instead of asking again.
+      Vite writes the backend address (the VITE_API_URL setting) into the quotes below when it builds
+      the site. When it is not set, nothing is fetched. This sits above the font stylesheet because a
+      script placed after a stylesheet waits for that stylesheet to arrive.
+    -->
+    <script>
+      try {
+        var abkApi = "%VITE_API_URL%".trim().replace(/\/+$/, "");
+        if (/^https?:\/\/[^%\s]+$/.test(abkApi)) {
+          window.__abkStats = fetch(abkApi + "/api/stats")
+            .then(function (res) { return res.ok ? res.json() : null; })
+            .catch(function () { return null; });
+        }
+      } catch (e) {}
+    </script>
+
     <!-- Open the connections to the font servers early, so the headings do not wait for them -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

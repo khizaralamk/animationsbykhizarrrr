@@ -69,6 +69,27 @@ export const ANIMATIONS = [
     ],
   },
   {
+    // PAID. Its real files are in the private bucket paid-animations/survey-corps/, not on this site.
+    slug: "survey-corps",
+    tier: "paid",
+    title: "Survey Corps",
+    blurb: "The Survey Corps emblem, the wings over the shield, traced pixel by pixel with a shine that slides across every few seconds. Tall or wide, Fill or Line.",
+    added: "2026-10-07",
+    tags: ["shine", "exclusive", "ESP32 sketch"],
+    screen: "128 x 64 OLED, I2C, 0.96 inch",
+    price: "$6.99",
+    paddlePriceId: fromEnv("VITE_PRICE_SURVEY_CORPS"),
+    launch: { price: "$1", paddlePriceId: fromEnv("VITE_PRICE_SURVEY_CORPS_LAUNCH"), limit: 10 },
+    preview: "preview.gif",
+    includes: [
+      "The preview page: one HTML file with size, Portrait or Landscape, Fill or Line, and an Arduino bitmap copy box",
+      "The complete ESP32 sketch in one file, with both directions and both styles inside, and the shine",
+      "A step by step guide: wiring, Arduino IDE set up, every setting, upload and troubleshooting",
+      "One zip with everything, named survey-corps-oled-animation.zip, that downloads by itself after payment",
+      "Commercial use: pay once, use it in your products however you want",
+    ],
+  },
+  {
     slug: "cool-cat",
     preview: "preview.gif",
     title: "Cool Cat",

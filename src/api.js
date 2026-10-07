@@ -19,21 +19,33 @@ export function visitorId() {
     if (!id || !/^[0-9a-f-]{36}$/i.test(id)) {
       id = crypto.randomUUID();
       localStorage.setItem(KEY, id);
+      visitorId.isNew = true;                                  // first time this browser opens the site
     }
     return id;
   } catch {
     // storage is blocked: use an id that lasts for this page view only
-    return (visitorId.temp = visitorId.temp || crypto.randomUUID());
+    if (!visitorId.temp) { visitorId.temp = crypto.randomUUID(); visitorId.isNew = true; }
+    return visitorId.temp;
   }
 }
 
-async function call(path, { method = "GET", body, keepalive = false } = {}) {
+/* True when this browser had no visitor id before this page view, so the backend has never counted it. */
+export function isNewVisitor() {
+  visitorId();
+  return Boolean(visitorId.isNew);
+}
+
+/*
+  anonymous: true sends no visitor id. A plain GET with no extra headers is a "simple" request, so
+  the browser does not first ask the backend "may I?" (a whole extra trip), and the CDN can answer it at once.
+*/
+async function call(path, { method = "GET", body, keepalive = false, anonymous = false } = {}) {
   if (!hasBackend) return null;
   try {
     const res = await fetch(BASE + path, {
       method,
       keepalive,                                               // lets a "download" event finish even if the page moves on
-      headers: { "x-visitor-id": visitorId(), ...(body ? { "content-type": "application/json" } : {}) },
+      headers: { ...(anonymous ? {} : { "x-visitor-id": visitorId() }), ...(body ? { "content-type": "application/json" } : {}) },
       body: body ? JSON.stringify(body) : undefined,
     });
     const data = await res.json().catch(() => null);
@@ -44,8 +56,17 @@ async function call(path, { method = "GET", body, keepalive = false } = {}) {
   }
 }
 
-/* { stats: { slug: { views, downloads, copies, hearts } }, totals } or null */
-export const getStats = () => call("/api/stats");
+/*
+  { stats: { slug: { views, downloads, copies, hearts } }, totals, visitors, offers, at } or null
+  The numbers are the same for everyone, so no visitor id is sent (see "anonymous" above).
+  index.html starts this request before the page's code has even loaded; the first call here uses
+  that answer instead of asking again. Later calls always ask the backend.
+*/
+export function getStats() {
+  const early = window.__abkStats;
+  if (early) { window.__abkStats = null; return early; }
+  return call("/api/stats", { anonymous: true });
+}
 
 /* Records a view, download or copy. Never throws and never blocks the page. */
 export function track(slug, kind) {
