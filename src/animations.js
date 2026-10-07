@@ -69,6 +69,22 @@ export const ANIMATIONS = [
     ],
   },
   {
+    slug: "cool-cat",
+    preview: "preview.gif",
+    title: "Cool Cat",
+    blurb: "The fluffy cat in round sunglasses. Its tail lifts, slaps down and rubs along the ground, then it sits still for a moment. Fill or Line, tall or wide.",
+    added: "2026-10-07",
+    tags: ["tail move", "line or fill", "ESP32 sketch"],
+    screen: "128 x 64 OLED, I2C, 0.96 inch",
+    files: [
+      { label: "Download the page", file: "index.html", note: "One HTML file. Works offline." },
+      { label: "Download the sketch", file: "CoolCat_OneFile.ino", note: "Arduino sketch, drawings inside. Put it in a folder named CoolCat_OneFile." },
+    ],
+    guides: [
+      { title: "How to put it on your board", file: "guide.md" },
+    ],
+  },
+  {
     slug: "nah-id-win-2",
     preview: "preview.gif",
     title: "Nah, I'd Win 2",
