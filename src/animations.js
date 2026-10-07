@@ -69,24 +69,19 @@ export const ANIMATIONS = [
     ],
   },
   {
-    // PAID. Its real files are in the private bucket paid-animations/messi/, not on this site.
     slug: "messi",
-    tier: "paid",
+    preview: "preview.gif",
     title: "Messi",
     blurb: "The Messi logo, the emblem with the MESSI letters under it, traced pixel by pixel with a shine that slides across every few seconds. Wide or tall, Lit or Dark.",
     added: "2026-10-08",
-    tags: ["shine", "exclusive", "ESP32 sketch"],
+    tags: ["shine", "lit or dark", "ESP32 sketch"],
     screen: "128 x 64 OLED, I2C, 0.96 inch",
-    price: "$6.99",
-    paddlePriceId: fromEnv("VITE_PRICE_MESSI"),
-    launch: { price: "$1", paddlePriceId: fromEnv("VITE_PRICE_MESSI_LAUNCH"), limit: 10 },
-    preview: "preview.gif",
-    includes: [
-      "The preview page: one HTML file with size, Landscape or Portrait, Lit or Dark, and an Arduino bitmap copy box",
-      "The complete ESP32 sketch in one file, with both directions and both styles inside, and the shine",
-      "A step by step guide: wiring, Arduino IDE set up, every setting, upload and troubleshooting",
-      "One zip with everything, named messi-oled-animation.zip, that downloads by itself after payment",
-      "Commercial use: pay once, use it in your products however you want",
+    files: [
+      { label: "Download the page", file: "index.html", note: "One HTML file. Works offline." },
+      { label: "Download the sketch", file: "MessiLogo_OneFile.ino", note: "Arduino sketch, pictures inside. Put it in a folder named MessiLogo_OneFile." },
+    ],
+    guides: [
+      { title: "How to put it on your board", file: "guide.md" },
     ],
   },
   {
